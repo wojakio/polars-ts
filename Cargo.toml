@@ -1,0 +1,17 @@
+[package]
+name = "polars-ts"
+version = "0.0.1"
+edition = "2021"
+
+[lib]
+name = "polars_ts"
+crate-type= ["cdylib"]
+
+[dependencies]
+pyo3 = { version = "0.20.3", features = ["extension-module", "abi3-py38"] }
+pyo3-polars = { version = "0.12.0", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+polars = { version = "0.38.3", default-features = false }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+jemallocator = { version = "0.5", features = ["disable_initial_exec_tls"] }
