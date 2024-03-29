@@ -1,5 +1,10 @@
 use polars::prelude::*;
 
+pub(crate) fn same_output_type(input_fields: &[Field]) -> PolarsResult<Field> {
+    let field = &input_fields[0];
+    Ok(field.clone())
+}
+
 // This function is useful for writing functions which
 // accept pairs of List columns. Delete if unneded.
 #[allow(dead_code)]
