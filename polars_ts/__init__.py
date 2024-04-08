@@ -37,4 +37,3 @@ def template_1(expr: IntoExpr, *, seed: int) -> pl.Expr:
         kwargs={"seed": seed},
         is_elementwise=False,
     )
-

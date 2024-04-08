@@ -3,17 +3,16 @@ use polars::prelude::*;
 
 use rand::distributions::Uniform;
 use rand::rngs::StdRng;
-use rand::SeedableRng;
 use rand::Rng;
+use rand::SeedableRng;
 use rand_distr::{Normal, StandardNormal};
 use wyhash::wyhash;
-
 
 pub(crate) fn impl_random_uniform(
     len: usize,
     low: f64,
     high: f64,
-    seed: Option<u64>
+    seed: Option<u64>,
 ) -> Result<ChunkedArray<Float64Type>, PolarsError> {
     if low >= high {
         return Err(PolarsError::ComputeError(
@@ -32,7 +31,6 @@ pub(crate) fn impl_random_uniform(
 
     Ok(out)
 }
-
 
 pub(crate) fn impl_random_normal(
     len: usize,
@@ -62,13 +60,12 @@ pub(crate) fn impl_random_normal(
     Ok(out)
 }
 
-
 pub(crate) fn impl_wyhash(s: &Series) -> Result<ChunkedArray<UInt64Type>, PolarsError> {
-    let ca = s.str()?; 
+    let ca = s.str()?;
 
-    let out: ChunkedArray<UInt64Type> = ca.apply_generic(|v| {
-        v.map(|v| wyhash(v.as_bytes(), 42))
-    }).with_name(ca.name());
+    let out: ChunkedArray<UInt64Type> = ca
+        .apply_generic(|v| v.map(|v| wyhash(v.as_bytes(), 42)))
+        .with_name(ca.name());
 
     Ok(out)
 }

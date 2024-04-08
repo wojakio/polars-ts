@@ -21,21 +21,15 @@ def test_piglatinnify():
 
 
 def test_template_1():
-    df = pl.DataFrame({"x": [0,1,2,3,4]})
-    
-    result = (
-        df
-        .lazy()
-        .with_columns(result=template_1(pl.col("x"), seed=100))
-        .collect()
+    df = pl.DataFrame({"x": [0, 1, 2, 3, 4]})
+
+    result = df.lazy().with_columns(result=template_1(pl.col("x"), seed=100)).collect()
+
+    expected_df = pl.DataFrame(
+        {
+            "x": [0, 1, 2, 3, 4],
+            "result": [100, 201, 303, 406, 510],
+        }
     )
 
-    expected_df = pl.DataFrame({
-        "x": [0,1,2,3,4],
-        "result": [100, 201, 303, 406, 510],
-    })
-
     assert result.equals(expected_df)
-
-
-

@@ -6,17 +6,16 @@ from .sf import SeriesFrame
 from .expr.random import (
     random_normal as rand_normal,
     random_uniform as rand_uniform,
-    wyhash
+    wyhash,
 )
 
 __NAMESPACE = "dummy"
 
+
 @pl.api.register_lazyframe_namespace(__NAMESPACE)
 class DummyFrame(SeriesFrame):
-
     def __init__(self, df: pl.LazyFrame):
         super().__init__(df)
-
 
     def random_category_subgroups(
         self,
@@ -25,20 +24,16 @@ class DummyFrame(SeriesFrame):
         *,
         max_num_subgroups: int = None,
         seed: int = 42,
-        partition: Mapping[Literal['by', 'but'], List[str]] = None,
-        out: str = 'subgroup'
+        partition: Mapping[Literal["by", "but"], List[str]] = None,
+        out: str = "subgroup",
     ) -> pl.LazyFrame:
-
         split = self.auto_partition(partition)
 
         if max_num_subgroups is None:
             max_num_subgroups = (
-                self._df
-                .select(1 + (pl.len() // max(sizes)))
-                .collect()
-                .item(0,0)
+                self._df.select(1 + (pl.len() // max(sizes))).collect().item(0, 0)
             )
-        
+
         prefix = pl.col(prefix) if isinstance(prefix, str) else prefix
 
         idxs = (
@@ -47,48 +42,35 @@ class DummyFrame(SeriesFrame):
             .cum_sum()
         )
 
-        self._df = (
-            self._df
-            .with_row_index(self._RESERVED_ROW_IDX)
-            .with_columns(
-                pl.concat_str(
-                    prefix,
-                    pl.when(pl.col(self._RESERVED_ROW_IDX).is_in(idxs))
-                    .then(1)
-                    .otherwise(0)
-                    .cum_sum()
-                    .cast(pl.String)
-                )
-                .over(split)
-                .cast(pl.Categorical)
-                .alias(out)
+        self._df = self._df.with_row_index(self._RESERVED_ROW_IDX).with_columns(
+            pl.concat_str(
+                prefix,
+                pl.when(pl.col(self._RESERVED_ROW_IDX).is_in(idxs))
+                .then(1)
+                .otherwise(0)
+                .cum_sum()
+                .cast(pl.String),
             )
+            .over(split)
+            .cast(pl.Categorical)
+            .alias(out)
         )
 
         return self.result_df
-        
-    
-    def random_uniform(
-            self,
-            lower: Union[pl.Expr, float] = 0.,
-            upper: Union[pl.Expr, float] = 1.,
-            *, 
-            partition: Mapping[Literal['by', 'but'], List[str]] = None,
-            out: str = 'value',
-        ) -> pl.LazyFrame:
 
+    def random_uniform(
+        self,
+        lower: Union[pl.Expr, float] = 0.0,
+        upper: Union[pl.Expr, float] = 1.0,
+        *,
+        partition: Mapping[Literal["by", "but"], List[str]] = None,
+        out: str = "value",
+    ) -> pl.LazyFrame:
         split = self.auto_partition(partition)
-        self._df = (
-            self._df
-            .with_columns(
-                rand_uniform(
-                    lower,
-                    upper,
-                    seed=wyhash(pl.concat_str(split).first())
-                )
-                .over(split)
-                .alias(out)
-            )
+        self._df = self._df.with_columns(
+            rand_uniform(lower, upper, seed=wyhash(pl.concat_str(split).first()))
+            .over(split)
+            .alias(out)
         )
 
         # random nulls
@@ -97,39 +79,25 @@ class DummyFrame(SeriesFrame):
         return self.result_df
 
     def random_normal(
-            self,
-            mu: Union[pl.Expr, float] = 0.,
-            sigma: Union[pl.Expr, float] = 1.,
-            *, 
-            partition: Mapping[Literal['by', 'but'], List[str]] = None,
-            out: str = 'value',
-        ) -> pl.LazyFrame:
-
+        self,
+        mu: Union[pl.Expr, float] = 0.0,
+        sigma: Union[pl.Expr, float] = 1.0,
+        *,
+        partition: Mapping[Literal["by", "but"], List[str]] = None,
+        out: str = "value",
+    ) -> pl.LazyFrame:
         split = self.auto_partition(partition)
-        self._df = (
-            self._df
-            .with_columns(
-                rand_normal(
-                    mu,
-                    sigma,
-                    seed=wyhash(pl.concat_str(split).first())
-                )
-                .over(split)
-                .alias(out)
-            )
+        self._df = self._df.with_columns(
+            rand_normal(mu, sigma, seed=wyhash(pl.concat_str(split).first()))
+            .over(split)
+            .alias(out)
         )
 
         return self.result_df
 
-
     def enum(
-            self,
-            names: Union[List[str], int],
-            *,
-            out: str = "category",
-            prefix="ENUM_"
-        ) -> pl.LazyFrame:
-
+        self, names: Union[List[str], int], *, out: str = "category", prefix="ENUM_"
+    ) -> pl.LazyFrame:
         if isinstance(names, int):
             names_expr = (
                 pl.int_ranges(0, 100, eager=True)
@@ -146,21 +114,19 @@ class DummyFrame(SeriesFrame):
         # random nulls
 
         self._df = (
-            self._df
-            .with_columns(names_expr)
+            self._df.with_columns(names_expr)
             .explode(out)
-            .with_columns(
-                pl.col(out).cast(enum_dtype)
-            )
+            .with_columns(pl.col(out).cast(enum_dtype))
         )
         return self.result_df
 
-
     def correlate(
-            self,
-            col_a,
-            col_b,
-            type: Literal['additive', 'multiplicative', 'shift', 'exponent', 'average', 'none']
+        self,
+        col_a,
+        col_b,
+        type: Literal[
+            "additive", "multiplicative", "shift", "exponent", "average", "none"
+        ],
     ):
         # correlate with col
         #   correlate type: noise, lead/lag, moving avg, non-linear

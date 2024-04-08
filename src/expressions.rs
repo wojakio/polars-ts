@@ -1,14 +1,13 @@
 #![allow(clippy::unused_unit)]
+use crate::math::{impl_random_normal, impl_random_uniform, impl_wyhash};
 use crate::utils::same_output_type;
-use crate::math::{impl_random_uniform, impl_random_normal, impl_wyhash};
 
 use polars::prelude::*;
 use pyo3_polars::derive::polars_expr;
 use pyo3_polars::export::polars_core::utils::CustomIterTools;
 
-use std::fmt::Write;
 use serde::Deserialize;
-
+use std::fmt::Write;
 
 #[polars_expr(output_type=String)]
 fn pig_latinnify(inputs: &[Series]) -> PolarsResult<Series> {
@@ -28,7 +27,6 @@ struct PlTemplate1Kwargs {
 
 #[polars_expr(output_type_func=same_output_type)]
 fn pl_template_1(inputs: &[Series], kwargs: PlTemplate1Kwargs) -> PolarsResult<Series> {
-
     let s = &inputs[0];
     let ca: &Int64Chunked = s.i64()?;
     let out: Int64Chunked = ca
@@ -45,8 +43,6 @@ fn pl_template_1(inputs: &[Series], kwargs: PlTemplate1Kwargs) -> PolarsResult<S
     Ok(out.into_series())
 }
 
-
-
 #[polars_expr(output_type=Float64)]
 fn pl_random_uniform(inputs: &[Series]) -> PolarsResult<Series> {
     let ca: &ChunkedArray<UInt32Type> = inputs[0].u32()?;
@@ -58,15 +54,11 @@ fn pl_random_uniform(inputs: &[Series]) -> PolarsResult<Series> {
     let seed = inputs[3].u64()?;
     let seed = seed.get(0);
 
-    let result = 
-        impl_random_uniform(len, low, high, seed)?
+    let result = impl_random_uniform(len, low, high, seed)?
         .with_name(ca.name())
-        .into_series()
-    ;
+        .into_series();
     Ok(result)
-
 }
-
 
 #[polars_expr(output_type=Float64)]
 fn pl_random_normal(inputs: &[Series]) -> PolarsResult<Series> {
@@ -79,20 +71,14 @@ fn pl_random_normal(inputs: &[Series]) -> PolarsResult<Series> {
     let seed = inputs[3].u64()?;
     let seed = seed.get(0);
 
-    let result = 
-        impl_random_normal(len, mean, std_, seed)?
-     // .with_name(ca.name())
-    .into_series()
-    ;
+    let result = impl_random_normal(len, mean, std_, seed)?
+        // .with_name(ca.name())
+        .into_series();
     Ok(result)
-
-
 }
-
 
 #[polars_expr(output_type=UInt64)]
 fn pl_wyhash(inputs: &[Series]) -> PolarsResult<Series> {
-
     let s = inputs.first().unwrap();
     let result = impl_wyhash(s)?.into_series();
 

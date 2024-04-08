@@ -11,17 +11,18 @@ if TYPE_CHECKING:
 
 def wyhash(expr: IntoExpr) -> pl.Expr:
     return pl.plugins.register_plugin_function(
-            plugin_path=Path(__file__).parent.parent,
-            function_name="pl_wyhash",
-            args=expr,
-            is_elementwise=True,
-        )
+        plugin_path=Path(__file__).parent.parent,
+        function_name="pl_wyhash",
+        args=expr,
+        is_elementwise=True,
+    )
+
 
 def random_uniform(
     lower: Union[pl.Expr, float] = 0.0,
     upper: Union[pl.Expr, float] = 1.0,
-    seed: Union[pl.Expr, int] = 42
-    ) -> pl.Expr:
+    seed: Union[pl.Expr, int] = 42,
+) -> pl.Expr:
     lo = pl.lit(lower, pl.Float64) if isinstance(lower, float) else lower
     up = pl.lit(upper, pl.Float64) if isinstance(upper, float) else upper
     seed = pl.lit(seed, pl.UInt64) if isinstance(seed, int) else seed
@@ -34,12 +35,11 @@ def random_uniform(
     )
 
 
-
 def random_normal(
     mu: Union[pl.Expr, float] = 0.0,
     sigma: Union[pl.Expr, float] = 1.0,
     seed: Union[pl.Expr, int] = 42,
-    ) -> pl.Expr:
+) -> pl.Expr:
     mean = pl.lit(mu, pl.Float64) if isinstance(mu, float) else mu
     var = pl.lit(sigma, pl.Float64) if isinstance(sigma, float) else sigma
     seed = pl.lit(seed, pl.UInt64) if isinstance(seed, int) else seed
