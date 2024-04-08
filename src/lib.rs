@@ -1,4 +1,5 @@
 mod expressions;
+mod math;
 mod utils;
 
 #[cfg(target_os = "linux")]

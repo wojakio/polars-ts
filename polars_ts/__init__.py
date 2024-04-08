@@ -5,6 +5,17 @@ from typing import TYPE_CHECKING
 
 import polars as pl
 
+from .display import *
+from .sf import *
+from .tsf import *
+from .time import *
+from .dummy import *
+from .resample import *
+
+from .calendar import *
+from .futures import *
+
+
 if TYPE_CHECKING:
     from polars.type_aliases import IntoExpr
 
@@ -15,4 +26,14 @@ def pig_latinnify(expr: IntoExpr) -> pl.Expr:
         function_name="pig_latinnify",
         args=expr,
         is_elementwise=True,
+    )
+
+
+def template_1(expr: IntoExpr, *, seed: int) -> pl.Expr:
+    return pl.plugins.register_plugin_function(
+        plugin_path=Path(__file__).parent,
+        function_name="pl_template_1",
+        args=expr,
+        kwargs={"seed": seed},
+        is_elementwise=False,
     )
