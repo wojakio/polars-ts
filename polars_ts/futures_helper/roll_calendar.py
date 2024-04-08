@@ -1,6 +1,6 @@
 import polars as pl
 
-from .util import month_to_imm
+from .util import month_to_imm_dict
 
 
 def load_roll_config(filename: str) -> pl.LazyFrame:
@@ -29,14 +29,14 @@ def asset_carry_contracts(roll_config: pl.LazyFrame) -> pl.LazyFrame:
         .explode("hold_roll_cycle")
         .with_columns(
             hold_month=pl.col("hold_roll_cycle")
-            .replace(month_to_imm(as_dict=True, invert=True))
+            .replace(month_to_imm_dict(invert=True))
             .cast(pl.Int8),
             carry_month=(
                 pl.struct(
                     "hold_roll_cycle", "carry_contract_offset", "priced_roll_cycle"
                 )
                 .map_elements(_find_carry_month, return_dtype=pl.String)
-                .replace(month_to_imm(as_dict=True, invert=True))
+                .replace(month_to_imm_dict(invert=True))
                 .cast(pl.Int8)
             ),
         )
@@ -78,10 +78,10 @@ def asset_near_far_contracts(roll_config: pl.LazyFrame) -> pl.LazyFrame:
         .explode("hold_near", "hold_far")
         .with_columns(
             hold_near_month=pl.col("hold_near")
-            .replace(month_to_imm(as_dict=True, invert=True))
+            .replace(month_to_imm_dict(invert=True))
             .cast(pl.Int8),
             hold_far_month=pl.col("hold_far")
-            .replace(month_to_imm(as_dict=True, invert=True))
+            .replace(month_to_imm_dict(invert=True))
             .cast(pl.Int8),
         )
         .with_columns(
@@ -135,9 +135,8 @@ def roll_calendar_time_grid(
         .collect()
     )
 
-    start_end = list(start_end.iter_rows())[0]
-    start_end
-    time_grid = pl.LazyFrame().time.range(start_end[0], start_end[1])
+    dates = list(start_end.iter_rows())[0]
+    time_grid = pl.LazyFrame().time.range(dates[0], dates[1])  # type: ignore[attr-defined]
 
     return time_grid
 

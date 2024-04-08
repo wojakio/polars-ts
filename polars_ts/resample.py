@@ -1,4 +1,4 @@
-from typing import List, Literal, Mapping
+from typing import List, Literal, Mapping, Optional
 
 import polars as pl
 
@@ -16,7 +16,7 @@ class ResampleFrame(TimeSeriesFrame):
         self,
         period: str,
         *,
-        partition: Mapping[Literal["by", "but"], List[str]] = None,
+        partition: Optional[Mapping[Literal["by", "but"], List[str]]] = None,
         value_col: str = "value",
     ) -> pl.LazyFrame:
         split = self.auto_partition(partition)

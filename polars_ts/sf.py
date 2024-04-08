@@ -1,4 +1,4 @@
-from typing import Iterable, List, Mapping, Literal
+from typing import Iterable, List, Mapping, Literal, Union
 
 import polars as pl
 
@@ -35,17 +35,15 @@ class SeriesFrame:
         return self._df.select(pl.col(pl.Categorical, pl.Enum))
 
     def ht(self, nrows=3) -> pl.LazyFrame:
-        if len(self._df) <= (nrows + nrows):
-            return self._df
-
-        return pl.concat([self._df.head(nrows), self._df.tail(nrows)])
+        return pl.concat([self._df.head(nrows), self._df.tail(nrows)]).unique()
 
     def common_category_names(self, rhs: pl.LazyFrame) -> List[str]:
-        return sorted(set(self.category_names()).intersection(rhs.sf.category_names()))
+        rhs_categories = rhs.sf.category_names()  # type: ignore[attr-defined]
+        return sorted(set(self.category_names()).intersection(rhs_categories))
 
     def auto_partition(
         self,
-        partition: Mapping[Literal["by", "but"], List[str]],
+        partition: Union[Mapping[Literal["by", "but"], List[str]] | None],
     ) -> List[str]:
         cols = set(self.categories().columns).difference(["time"])
         if partition is not None:

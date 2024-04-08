@@ -32,7 +32,7 @@ class TimeFrame(SeriesFrame):
 
         return self.expand(interval)
 
-    def expand(self, interval: str = "1d") -> pl.Series:
+    def expand(self, interval: str = "1d") -> pl.LazyFrame:
         # pre: every row has a time: list[date] column
         # xdt doesnt support date_ranges?
         # fn = xdt.date_range if interval.endswith('bd') else pl.date_ranges
@@ -42,4 +42,4 @@ class TimeFrame(SeriesFrame):
             fn(pl.col("time").list.min(), pl.col("time").list.max(), interval)
         ).explode("time")
 
-        return self._df
+        return self.result_df

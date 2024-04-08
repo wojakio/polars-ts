@@ -18,6 +18,6 @@ if len(repr_overloaded) == 0:
             self.select(*[pl.col(c) for c in cols], pl.exclude(cols)), **kwargs
         )
 
-    pl.DataFrame._repr_html_ = newrepr
+    pl.DataFrame._repr_html_ = newrepr  # type: ignore[method-assign]
 
     repr_overloaded = [1]

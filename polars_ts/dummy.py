@@ -1,4 +1,4 @@
-from typing import List, Union, Literal, Mapping
+from typing import List, Union, Literal, Mapping, Optional
 
 import polars as pl
 
@@ -19,12 +19,12 @@ class DummyFrame(SeriesFrame):
 
     def random_category_subgroups(
         self,
-        prefix: pl.Expr,
+        prefix: Union[str, pl.Expr],
         sizes: List[int],
         *,
-        max_num_subgroups: int = None,
+        max_num_subgroups: Optional[int] = None,
         seed: int = 42,
-        partition: Mapping[Literal["by", "but"], List[str]] = None,
+        partition: Optional[Mapping[Literal["by", "but"], List[str]]] = None,
         out: str = "subgroup",
     ) -> pl.LazyFrame:
         split = self.auto_partition(partition)
@@ -63,7 +63,7 @@ class DummyFrame(SeriesFrame):
         lower: Union[pl.Expr, float] = 0.0,
         upper: Union[pl.Expr, float] = 1.0,
         *,
-        partition: Mapping[Literal["by", "but"], List[str]] = None,
+        partition: Optional[Mapping[Literal["by", "but"], List[str]]] = None,
         out: str = "value",
     ) -> pl.LazyFrame:
         split = self.auto_partition(partition)
@@ -83,7 +83,7 @@ class DummyFrame(SeriesFrame):
         mu: Union[pl.Expr, float] = 0.0,
         sigma: Union[pl.Expr, float] = 1.0,
         *,
-        partition: Mapping[Literal["by", "but"], List[str]] = None,
+        partition: Optional[Mapping[Literal["by", "but"], List[str]]] = None,
         out: str = "value",
     ) -> pl.LazyFrame:
         split = self.auto_partition(partition)
@@ -100,12 +100,14 @@ class DummyFrame(SeriesFrame):
     ) -> pl.LazyFrame:
         if isinstance(names, int):
             names_expr = (
-                pl.int_ranges(0, 100, eager=True)
+                pl.int_ranges(0, 100)
                 .cast(pl.List(pl.Utf8))
                 .list.eval(pl.element().str.replace("^", prefix))
                 .alias(out)
             )
-            enum_dtype = pl.Enum(names_expr.explode().to_list())
+            enum_dtype = pl.Enum(
+                pl.DataFrame().with_columns(names_expr.explode()).to_series().to_list()
+            )
 
         else:
             names_expr = pl.lit(names).alias(out)
