@@ -2,9 +2,33 @@ import polars as pl
 
 from .util import month_to_imm_dict
 
+def guess_security_meta(
+    bbg_symbols: pl.LazyFrame,
+    roll_config: pl.LazyFrame
+) -> pl.LazyFrame:
+    df = (
+        roll_config
+        .join(bbg_symbols, on="asset")
+        .filter(pl.col("priced_roll_cycle").str.contains(pl.col("imm")))
+        .with_columns(
+            expiry_date=(
+                pl.col("time")
+                .dt.month_start()
+                .dt.offset_by(pl.col("approximate_expiry_offset"))
+                .dt.date()
+            )
+        )
+        .select(
+            "asset",
+            "ticker",
+            fut_first_trade_dt=pl.col("expiry_date").dt.offset_by("-90d"),
+            last_tradeable_dt="expiry_date",
+            fut_notice_first="expiry_date"
+        )
+        .unique(maintain_order=True)
+    )
 
-def load_roll_config(filename: str) -> pl.LazyFrame:
-    return pl.scan_csv(filename)
+    return df
 
 
 def asset_carry_contracts(roll_config: pl.LazyFrame) -> pl.LazyFrame:
@@ -115,64 +139,45 @@ def asset_contracts(roll_config: pl.LazyFrame) -> pl.LazyFrame:
     )
 
 
-def roll_calendar_time_grid(
-    roll_config: pl.LazyFrame, start_date, end_date
+def create_roll_calendar_helper(
+    roll_config: pl.LazyFrame,
+    security_expiries: pl.LazyFrame,
+    include_debug: bool
 ) -> pl.LazyFrame:
-    start_end = (
-        roll_config.select(
-            asof_date_offset=pl.lit(start_date)
-            - (
-                pl.lit(start_date)
-                .dt.offset_by(pl.col("roll_offset"))
-                .dt.offset_by(pl.col("expiry_offset"))
-                .min()
-            )
-        )
-        .select(
-            start_date=pl.lit(start_date),
-            end_date=pl.lit(end_date) + pl.col("asof_date_offset"),
-        )
-        .collect()
-    )
+    
+    result_schema = [
+        "roll_date",
+        "asset",
+        "near_contract",
+        "far_contract",
+        "carry_contract",
+    ]
 
-    dates = list(start_end.iter_rows())[0]
-    time_grid = pl.LazyFrame().time.range(dates[0], dates[1])  # type: ignore[attr-defined]
+    if include_debug:
+        result_schema.extend([
+            "has_tickers",
+        ])
 
-    return time_grid
-
-
-def create_roll_calendars(
-    roll_config: pl.LazyFrame, start_date, end_date
-) -> pl.LazyFrame:
-    time_grid = roll_calendar_time_grid(roll_config, start_date, end_date)
-    return (
-        time_grid.join(
-            roll_config.select("asset", "expiry_offset", "roll_offset"), how="cross"
-        )
-        .with_columns(near_expiry_date=pl.lit(None).cast(pl.Date))
+    
+    df = (
+        roll_config.select("asset", "roll_offset")
+        .join(security_expiries, on="asset", how="left")
         .with_columns(
-            near_expiry_date=(
-                pl.when(pl.col("near_expiry_date").is_null()).then(
-                    # approximate expriy date
-                    pl.col("time")
-                    .dt.month_start()
-                    .dt.offset_by(pl.col("expiry_offset"))
-                    .dt.date()
-                )
-            )
-        )
-        .unique(subset=["asset", "near_expiry_date"], keep="first", maintain_order=True)
-        .with_columns(
+            has_tickers=pl.col("expiry_date").is_not_null(),
             roll_date=(
-                pl.col("near_expiry_date").dt.offset_by(pl.col("roll_offset")).dt.date()
+                pl.col("expiry_date").dt.offset_by(pl.col("roll_offset")).dt.date()
             )
         )
-        .with_columns(hold_near_month=pl.col("near_expiry_date").dt.month())
+        .with_columns(hold_near_month=pl.col("expiry_date").dt.month())
         .join(asset_contracts(roll_config), on=["asset", "hold_near_month"], how="left")
-        .with_columns(pl.col("^hold_(near|far).*$").backward_fill().over("asset"))
+        .with_columns(
+            pl.col("hold_near_month", "hold_far_month_offset", "carry_month_offset")
+            .backward_fill()
+            .over("asset")
+        )
         .with_columns(
             near_contract=pl.date(
-                pl.col("near_expiry_date").dt.year(), pl.col("hold_near_month"), 1
+                pl.col("expiry_date").dt.year(), pl.col("hold_near_month"), 1
             )
         )
         .with_columns(
@@ -185,15 +190,8 @@ def create_roll_calendars(
                 pl.col("carry_month_offset")
             )
         )
-        .select(
-            "roll_date",
-            "asset",
-            "near_contract",
-            "near_expiry_date",
-            "far_contract",
-            "carry_contract",
-        )
-        .drop_nulls()
-        .filter(pl.col("roll_date") <= end_date)
+        .select(result_schema)
         .sort("asset", "roll_date")
     )
+
+    return df

@@ -19,29 +19,35 @@ class CalendarFrame(SeriesFrame):
     def date_to_imm_contract(
         self,
         col_name: IntoExpr,
-        contract_code: IntoExpr = "",
+        prefix: IntoExpr = pl.lit(""),
+        suffix: IntoExpr = pl.lit(""),
         out: Optional[str] = None,
     ) -> pl.LazyFrame:
-        imm_dict = month_to_imm_dict()
-        col_name = parse_into_expr(col_name)
-        out = col_name.meta.output_name() if out is None else out
-        contract_code = (
-            pl.lit(contract_code) if isinstance(contract_code, str) else contract_code
-        )
 
+        col_expr = parse_into_expr(col_name)
+        prefix = parse_into_expr(prefix)
+        suffix = parse_into_expr(suffix)
+        out = col_expr.meta.output_name() if out is None else out
+
+        imm_dict = month_to_imm_dict()
         self._df = self._df.with_columns(
-            pl.concat_str(
-                [
-                    contract_code,
+            pl.when(col_expr.is_null())
+            .then(pl.lit(None).cast(pl.String))
+            .otherwise(
+                pl.concat_str([
+                    prefix,
                     pl.struct(
-                        col_name.dt.month().alias("month"),
-                        col_name.dt.strftime("%y").alias("year"),
-                    ).map_elements(
-                        lambda se: f"{imm_dict[int(se['month'])]}{se['year']}",
+                        col_expr.dt.month().alias("month"),
+                        col_expr.dt.strftime("%y").alias("year"),
+                    )
+                    .map_elements(
+                        lambda se: f"""{imm_dict.get(se['month'], "@@")}{se['year']}""",
                         return_dtype=pl.String,
                     ),
-                ]
-            ).alias(out)
+                    suffix
+                ])
+            )
+            .alias(out)
         )
 
         return self.result_df
