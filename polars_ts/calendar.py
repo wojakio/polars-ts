@@ -47,6 +47,7 @@ class CalendarFrame(SeriesFrame):
                     suffix
                 ])
             )
+            .cast(pl.Categorical)
             .alias(out)
         )
 

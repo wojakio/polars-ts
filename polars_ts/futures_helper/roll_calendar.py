@@ -1,3 +1,4 @@
+from datetime import datetime
 import polars as pl
 
 from .util import month_to_imm_dict
@@ -6,30 +7,55 @@ def guess_security_meta(
     bbg_symbols: pl.LazyFrame,
     roll_config: pl.LazyFrame
 ) -> pl.LazyFrame:
+
     df = (
         roll_config
         .join(bbg_symbols, on="asset")
-        .filter(pl.col("priced_roll_cycle").str.contains(pl.col("imm")))
+        .filter(pl.col("priced_roll_cycle").str.contains(pl.col("imm").cast(pl.String)))
         .with_columns(
             expiry_date=(
                 pl.col("time")
                 .dt.month_start()
-                .dt.offset_by(pl.col("approximate_expiry_offset"))
+                .dt.offset_by(pl.col("approximate_expiry_offset").cast(pl.String))
                 .dt.date()
             )
         )
         .select(
             "asset",
             "ticker",
-            fut_first_trade_dt=pl.col("expiry_date").dt.offset_by("-90d"),
+            fut_first_trade_dt=_guess_fut_first_trade_dt(pl.col("expiry_date")),
             last_tradeable_dt="expiry_date",
-            fut_notice_first="expiry_date"
+            fut_notice_first="expiry_date",
         )
+        
         .unique(maintain_order=True)
     )
 
     return df
 
+
+def _guess_fut_first_trade_dt(
+        expiry_date: pl.Expr,
+        min_trade_days: str = "-2y",
+        buffer_days: str = "-30d"
+) -> pl.Expr:
+    
+    first_trade_dt = pl.min_horizontal(
+        (
+            expiry_date
+            .dt.month_start()
+            .dt.offset_by(pl.col("approximate_expiry_offset").cast(pl.String))
+            .dt.offset_by(pl.col("roll_offset").cast(pl.String))
+            .dt.offset_by(buffer_days)
+        ),
+        (
+            expiry_date.dt.offset_by(min_trade_days)
+        )
+    )
+
+    return first_trade_dt
+
+    
 
 def asset_carry_contracts(roll_config: pl.LazyFrame) -> pl.LazyFrame:
     def _find_carry_month(hc: dict):
@@ -47,8 +73,8 @@ def asset_carry_contracts(roll_config: pl.LazyFrame) -> pl.LazyFrame:
         roll_config.select(
             "asset",
             "carry_contract_offset",
-            pl.col("hold_roll_cycle").str.extract_all("[F-Z]"),
-            pl.col("priced_roll_cycle"),
+            pl.col("hold_roll_cycle").cast(pl.String).str.extract_all("[F-Z]"),
+            pl.col("priced_roll_cycle").cast(pl.String),
         )
         .explode("hold_roll_cycle")
         .with_columns(
@@ -93,10 +119,10 @@ def asset_near_far_contracts(roll_config: pl.LazyFrame) -> pl.LazyFrame:
     return (
         roll_config.select(
             "asset",
-            hold_near=pl.col("hold_roll_cycle").str.extract_all("[F-Z]"),
+            hold_near=pl.col("hold_roll_cycle").cast(pl.String).str.extract_all("[F-Z]"),
             hold_far=pl.concat_str(
-                pl.col("hold_roll_cycle").str.slice(1),
-                pl.col("hold_roll_cycle").str.slice(0, 1),
+                pl.col("hold_roll_cycle").cast(pl.String).str.slice(1),
+                pl.col("hold_roll_cycle").cast(pl.String).str.slice(0, 1),
             ).str.extract_all("[F-Z]"),
         )
         .explode("hold_near", "hold_far")
@@ -165,7 +191,7 @@ def create_roll_calendar_helper(
         .with_columns(
             has_tickers=pl.col("expiry_date").is_not_null(),
             roll_date=(
-                pl.col("expiry_date").dt.offset_by(pl.col("roll_offset")).dt.date()
+                pl.col("expiry_date").dt.offset_by(pl.col("roll_offset").cast(pl.String)).dt.date()
             )
         )
         .with_columns(hold_near_month=pl.col("expiry_date").dt.month())
@@ -182,16 +208,19 @@ def create_roll_calendar_helper(
         )
         .with_columns(
             far_contract=pl.col("near_contract").dt.offset_by(
-                pl.col("hold_far_month_offset")
+                pl.col("hold_far_month_offset").cast(pl.String)
             )
         )
         .with_columns(
             carry_contract=pl.col("near_contract").dt.offset_by(
-                pl.col("carry_month_offset")
+                pl.col("carry_month_offset").cast(pl.String)
             )
         )
         .select(result_schema)
         .sort("asset", "roll_date")
+
+        # TODO: change this to drop nulls at end of table
+        .drop_nulls()
     )
 
     return df

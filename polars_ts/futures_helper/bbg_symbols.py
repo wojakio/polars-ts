@@ -17,7 +17,7 @@ def bbg_symbol_universe(
         .to_frame()
         .lazy()
         .join(symbols.select("asset", "symbol", "yellow_key").unique(), how="cross")
-        .with_columns(imm=pl.col("time").dt.month().replace(imms))
+        .with_columns(imm=pl.col("time").dt.month().replace(imms).cast(pl.Categorical))
         .select(
             pl.col("time").dt.month_start(),
             "asset",
@@ -29,7 +29,7 @@ def bbg_symbol_universe(
                 pl.col("time").dt.year().cast(pl.String).str.slice(2),
                 pl.lit(" "),
                 pl.col("yellow_key")
-            ])
+            ]).cast(pl.Categorical)
         )
         .sort("symbol", "time")
         .unique(subset=["ticker"], keep="first", maintain_order=True)
@@ -54,11 +54,11 @@ def infer_bbg_contracts(
 
     df = (
         roll_calendar
-        .join(contracts, on="asset")
+        .join(contracts, on="asset", how="left")
         .calendar.date_to_imm_contract("near_contract", prefix="symbol", suffix="yellow_key")
         .calendar.date_to_imm_contract("far_contract", prefix="symbol", suffix="yellow_key")
         .calendar.date_to_imm_contract("carry_contract", prefix="symbol", suffix="yellow_key")
-        .select(pl.exclude("symbol", "yellow_key"))
+        .select(roll_calendar.columns)
     )
 
     return df
