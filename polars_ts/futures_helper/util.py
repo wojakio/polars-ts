@@ -26,5 +26,5 @@ def make_generic_contract(col_or_date: IntoExpr) -> pl.Expr:
 
     return pl.struct(
         tenor=col_expr.dt.month().replace(mo2imm_dict).cast(pl.Categorical),
-        year=col_expr.dt.year()
+        year=col_expr.dt.year(),
     )

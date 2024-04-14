@@ -23,7 +23,6 @@ class CalendarFrame(SeriesFrame):
         suffix: IntoExpr = pl.lit(""),
         out: Optional[str] = None,
     ) -> pl.LazyFrame:
-
         col_expr = parse_into_expr(col_name)
         prefix = parse_into_expr(prefix)
         suffix = parse_into_expr(suffix)
@@ -34,18 +33,19 @@ class CalendarFrame(SeriesFrame):
             pl.when(col_expr.is_null())
             .then(pl.lit(None).cast(pl.String))
             .otherwise(
-                pl.concat_str([
-                    prefix,
-                    pl.struct(
-                        col_expr.dt.month().alias("month"),
-                        col_expr.dt.strftime("%y").alias("year"),
-                    )
-                    .map_elements(
-                        lambda se: f"""{imm_dict.get(se['month'], "@@")}{se['year']}""",
-                        return_dtype=pl.String,
-                    ),
-                    suffix
-                ])
+                pl.concat_str(
+                    [
+                        prefix,
+                        pl.struct(
+                            col_expr.dt.month().alias("month"),
+                            col_expr.dt.strftime("%y").alias("year"),
+                        ).map_elements(
+                            lambda se: f"""{imm_dict.get(se['month'], "@@")}{se['year']}""",
+                            return_dtype=pl.String,
+                        ),
+                        suffix,
+                    ]
+                )
             )
             .cast(pl.Categorical)
             .alias(out)

@@ -1,19 +1,17 @@
-from datetime import datetime
 import polars as pl
 
 from .util import month_to_imm_dict, make_generic_contract
 
-def guess_security_meta(
-    generic_contracts: pl.LazyFrame,
-    roll_config: pl.LazyFrame
-) -> pl.LazyFrame:
 
+def guess_security_meta(
+    generic_contracts: pl.LazyFrame, roll_config: pl.LazyFrame
+) -> pl.LazyFrame:
     df = (
-        roll_config
-        .join(generic_contracts, on="asset")
+        roll_config.join(generic_contracts, on="asset")
         .filter(
-            pl.col("priced_roll_cycle")
-            .str.contains(pl.col("instrument_id").struct.field("tenor").cast(pl.String))
+            pl.col("priced_roll_cycle").str.contains(
+                pl.col("instrument_id").struct.field("tenor").cast(pl.String)
+            )
         )
         .with_columns(
             expiry_date=(
@@ -30,7 +28,6 @@ def guess_security_meta(
             last_tradeable_dt="expiry_date",
             fut_notice_first="expiry_date",
         )
-        
         .unique(maintain_order=True)
     )
 
@@ -38,27 +35,20 @@ def guess_security_meta(
 
 
 def _guess_fut_first_trade_dt(
-        expiry_date: pl.Expr,
-        min_trade_days: str = "-2y",
-        buffer_days: str = "-30d"
+    expiry_date: pl.Expr, min_trade_days: str = "-2y", buffer_days: str = "-30d"
 ) -> pl.Expr:
-    
     first_trade_dt = pl.min_horizontal(
         (
-            expiry_date
-            .dt.month_start()
+            expiry_date.dt.month_start()
             .dt.offset_by(pl.col("approximate_expiry_offset").cast(pl.String))
             .dt.offset_by(pl.col("roll_offset").cast(pl.String))
             .dt.offset_by(buffer_days)
         ),
-        (
-            expiry_date.dt.offset_by(min_trade_days)
-        )
+        (expiry_date.dt.offset_by(min_trade_days)),
     )
 
     return first_trade_dt
 
-    
 
 def asset_carry_contracts(roll_config: pl.LazyFrame) -> pl.LazyFrame:
     def _find_carry_month(hc: dict):
@@ -122,7 +112,9 @@ def asset_near_far_contracts(roll_config: pl.LazyFrame) -> pl.LazyFrame:
     return (
         roll_config.select(
             "asset",
-            hold_near=pl.col("hold_roll_cycle").cast(pl.String).str.extract_all("[F-Z]"),
+            hold_near=pl.col("hold_roll_cycle")
+            .cast(pl.String)
+            .str.extract_all("[F-Z]"),
             hold_far=pl.concat_str(
                 pl.col("hold_roll_cycle").cast(pl.String).str.slice(1),
                 pl.col("hold_roll_cycle").cast(pl.String).str.slice(0, 1),
@@ -169,11 +161,8 @@ def asset_contracts(roll_config: pl.LazyFrame) -> pl.LazyFrame:
 
 
 def create_roll_calendar_helper(
-    roll_config: pl.LazyFrame,
-    security_dates: pl.LazyFrame,
-    include_debug: bool
+    roll_config: pl.LazyFrame, security_dates: pl.LazyFrame, include_debug: bool
 ) -> pl.LazyFrame:
-    
     result_schema = [
         "roll_date",
         "asset",
@@ -183,23 +172,26 @@ def create_roll_calendar_helper(
     ]
 
     if include_debug:
-        result_schema.extend([
-            "has_instruments",
-        ])
+        result_schema.extend(
+            [
+                "has_instruments",
+            ]
+        )
 
     imm2mo_dict = month_to_imm_dict(invert=True)
 
     df = (
-        roll_config
-        .join(security_dates, on="asset", how="left")
+        roll_config.join(security_dates, on="asset", how="left")
         .select(
             "asset",
             "instrument_id",
             "expiry_date",
             has_instruments=pl.col("expiry_date").is_not_null(),
             roll_date=(
-                pl.col("expiry_date").dt.offset_by(pl.col("roll_offset").cast(pl.String))
-            )
+                pl.col("expiry_date").dt.offset_by(
+                    pl.col("roll_offset").cast(pl.String)
+                )
+            ),
         )
         .with_columns(
             hold_near_month=(
@@ -210,7 +202,9 @@ def create_roll_calendar_helper(
                 .cast(pl.Int8)
             )
         )
-        .join(asset_contracts(roll_config), on=["asset", "hold_near_month"], how="inner")
+        .join(
+            asset_contracts(roll_config), on=["asset", "hold_near_month"], how="inner"
+        )
         .with_columns(
             pl.col("hold_near_month", "hold_far_month_offset", "carry_month_offset")
             .backward_fill()
@@ -238,7 +232,6 @@ def create_roll_calendar_helper(
         )
         .select(result_schema)
         .sort("asset", "roll_date")
-
         # TODO: change this to drop nulls at end of table
         .drop_nulls()
     )
