@@ -42,6 +42,8 @@ def parse_into_expr(
         expr = pl.col(expr)
     elif isinstance(expr, list) and not list_as_lit:
         expr = pl.lit(pl.Series(expr), dtype=dtype)
+    elif isinstance(expr, dict):
+        expr = pl.struct(expr)
     else:
         expr = pl.lit(expr, dtype=dtype)
 

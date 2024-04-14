@@ -17,6 +17,8 @@ from .calendar import *
 from .futures import *
 from .dummymkt import *
 
+pl.enable_string_cache()
+
 
 if TYPE_CHECKING:
     from polars.type_aliases import IntoExpr

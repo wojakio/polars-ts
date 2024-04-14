@@ -29,12 +29,29 @@ class DummyMktFrame(SeriesFrame):
             .select(
                 time=pl.date_ranges(start_dt_expr, end_dt_expr),
                 asset=pl.col("asset"),
-                ticker=pl.col("ticker"),
+                instrument_id=pl.col("instrument_id"),
             )
             .explode(pl.col("time"))
             .dummy.random_normal()
             .filter(pl.col("time").dt.weekday().is_in(hols).not_())
-            .with_columns(pl.col("value").cum_sum().over("asset", "ticker"))
+            .with_columns(pl.col("value").cum_sum().over("asset", "instrument_id"))
+        )
+
+        return df
+
+    def fetch_roll_calendar_prices(
+        self,
+        roll_calendar: pl.LazyFrame,
+        instrument_prices: pl.LazyFrame
+    ) -> pl.LazyFrame:
+        
+        prices = instrument_prices.rename({"time": "roll_date"})
+
+        df = (
+            roll_calendar
+            .join(prices.rename({"instrument_id": "near_contract", "value": "near_price"}), on=["roll_date", "asset", "near_contract"], how="left")
+            .join(prices.rename({"instrument_id": "far_contract", "value": "far_price"}), on=["roll_date", "asset", "far_contract"], how="left")
+            .join(prices.rename({"instrument_id": "carry_contract", "value": "carry_price"}), on=["roll_date", "asset", "carry_contract"], how="left")
         )
 
         return df

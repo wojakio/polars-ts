@@ -1,6 +1,9 @@
 from typing import Dict, Union
 
 import polars as pl
+from polars.type_aliases import IntoExpr
+
+from ..utils import parse_into_expr
 
 
 def month_to_imm_dict(invert: bool = False) -> Dict[Union[str, int], Union[str, int]]:
@@ -15,3 +18,13 @@ def month_to_imm_dict(invert: bool = False) -> Dict[Union[str, int], Union[str, 
     )
 
     return dict(df.iter_rows())
+
+
+def make_generic_contract(col_or_date: IntoExpr) -> pl.Expr:
+    mo2imm_dict = month_to_imm_dict()
+    col_expr = parse_into_expr(col_or_date, dtype=pl.Date)
+
+    return pl.struct(
+        tenor=col_expr.dt.month().replace(mo2imm_dict).cast(pl.Categorical),
+        year=col_expr.dt.year()
+    )

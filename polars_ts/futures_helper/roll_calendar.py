@@ -1,17 +1,20 @@
 from datetime import datetime
 import polars as pl
 
-from .util import month_to_imm_dict
+from .util import month_to_imm_dict, make_generic_contract
 
 def guess_security_meta(
-    bbg_symbols: pl.LazyFrame,
+    generic_contracts: pl.LazyFrame,
     roll_config: pl.LazyFrame
 ) -> pl.LazyFrame:
 
     df = (
         roll_config
-        .join(bbg_symbols, on="asset")
-        .filter(pl.col("priced_roll_cycle").str.contains(pl.col("imm").cast(pl.String)))
+        .join(generic_contracts, on="asset")
+        .filter(
+            pl.col("priced_roll_cycle")
+            .str.contains(pl.col("instrument_id").struct.field("tenor").cast(pl.String))
+        )
         .with_columns(
             expiry_date=(
                 pl.col("time")
@@ -22,7 +25,7 @@ def guess_security_meta(
         )
         .select(
             "asset",
-            "ticker",
+            "instrument_id",
             fut_first_trade_dt=_guess_fut_first_trade_dt(pl.col("expiry_date")),
             last_tradeable_dt="expiry_date",
             fut_notice_first="expiry_date",
@@ -167,7 +170,7 @@ def asset_contracts(roll_config: pl.LazyFrame) -> pl.LazyFrame:
 
 def create_roll_calendar_helper(
     roll_config: pl.LazyFrame,
-    security_expiries: pl.LazyFrame,
+    security_dates: pl.LazyFrame,
     include_debug: bool
 ) -> pl.LazyFrame:
     
@@ -181,40 +184,57 @@ def create_roll_calendar_helper(
 
     if include_debug:
         result_schema.extend([
-            "has_tickers",
+            "has_instruments",
         ])
 
-    
+    imm2mo_dict = month_to_imm_dict(invert=True)
+
     df = (
-        roll_config.select("asset", "roll_offset")
-        .join(security_expiries, on="asset", how="left")
-        .with_columns(
-            has_tickers=pl.col("expiry_date").is_not_null(),
+        roll_config
+        .join(security_dates, on="asset", how="left")
+        .select(
+            "asset",
+            "instrument_id",
+            "expiry_date",
+            has_instruments=pl.col("expiry_date").is_not_null(),
             roll_date=(
-                pl.col("expiry_date").dt.offset_by(pl.col("roll_offset").cast(pl.String)).dt.date()
+                pl.col("expiry_date").dt.offset_by(pl.col("roll_offset").cast(pl.String))
             )
         )
-        .with_columns(hold_near_month=pl.col("expiry_date").dt.month())
-        .join(asset_contracts(roll_config), on=["asset", "hold_near_month"], how="left")
+        .with_columns(
+            hold_near_month=(
+                pl.col("instrument_id")
+                .struct.field("tenor")
+                .cast(pl.String)
+                .replace(imm2mo_dict)
+                .cast(pl.Int8)
+            )
+        )
+        .join(asset_contracts(roll_config), on=["asset", "hold_near_month"], how="inner")
         .with_columns(
             pl.col("hold_near_month", "hold_far_month_offset", "carry_month_offset")
             .backward_fill()
             .over("asset")
         )
         .with_columns(
-            near_contract=pl.date(
+            near_contract_dt=pl.date(
                 pl.col("expiry_date").dt.year(), pl.col("hold_near_month"), 1
             )
         )
         .with_columns(
-            far_contract=pl.col("near_contract").dt.offset_by(
+            far_contract_dt=pl.col("near_contract_dt").dt.offset_by(
                 pl.col("hold_far_month_offset").cast(pl.String)
             )
         )
         .with_columns(
-            carry_contract=pl.col("near_contract").dt.offset_by(
+            carry_contract_dt=pl.col("near_contract_dt").dt.offset_by(
                 pl.col("carry_month_offset").cast(pl.String)
             )
+        )
+        .with_columns(
+            near_contract=make_generic_contract("near_contract_dt"),
+            far_contract=make_generic_contract("far_contract_dt"),
+            carry_contract=make_generic_contract("carry_contract_dt"),
         )
         .select(result_schema)
         .sort("asset", "roll_date")
