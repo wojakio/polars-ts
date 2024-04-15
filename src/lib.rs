@@ -10,10 +10,10 @@ use jemallocator::Jemalloc;
 static ALLOC: Jemalloc = Jemalloc;
 
 use pyo3::types::PyModule;
-use pyo3::{pymodule, PyResult, Python};
+use pyo3::{pymodule, Bound, PyResult};
 
 #[pymodule]
-fn polars_ts(_py: Python, m: &PyModule) -> PyResult<()> {
+fn polars_ts(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add("__version__", env!("CARGO_PKG_VERSION"))?;
     Ok(())
 }

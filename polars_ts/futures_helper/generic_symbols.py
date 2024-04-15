@@ -10,7 +10,7 @@ def generic_symbol_universe(
     start_date: IntoExpr,
     end_date: IntoExpr,
     date_pad_start: str = "0d",
-    date_pad_end: str = "0d",
+    date_pad_end: str = "5y",
     date_step: str = "1d",
 ) -> pl.LazyFrame:
     start_date_expr = parse_into_expr(start_date, dtype=pl.Date)
