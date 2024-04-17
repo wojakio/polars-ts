@@ -1,3 +1,4 @@
+from typing import Generic
 import polars as pl
 from polars.type_aliases import IntoExpr
 
@@ -9,17 +10,19 @@ from .dummymkt_helper import (
     impl_fetch_roll_calendar_prices,
 )
 
+from .types import FrameType
+
 __NAMESPACE = "dummymkt"
 
 
 @pl.api.register_lazyframe_namespace(__NAMESPACE)
-class DummyMktFrame(SeriesFrame):
-    def __init__(self, df: pl.LazyFrame):
+class DummyMktFrame(SeriesFrame, Generic[FrameType]):
+    def __init__(self, df: FrameType):
         super().__init__(df)
 
     def fetch_instrument_prices(
         self, start_dt: IntoExpr, end_dt: IntoExpr, remove_weekends: bool = True
-    ) -> pl.LazyFrame:
+    ) -> FrameType:
         start_dt_expr = parse_into_expr(start_dt, dtype=pl.Date)
         end_dt_expr = parse_into_expr(end_dt, dtype=pl.Date)
 
@@ -29,7 +32,7 @@ class DummyMktFrame(SeriesFrame):
         return prepare_result(df)
 
     def fetch_roll_calendar_prices(
-        self, roll_calendar: pl.LazyFrame, instrument_prices: pl.LazyFrame
-    ) -> pl.LazyFrame:
+        self, roll_calendar: FrameType, instrument_prices: FrameType
+    ) -> FrameType:
         df = impl_fetch_roll_calendar_prices(roll_calendar, instrument_prices)
         return prepare_result(df)

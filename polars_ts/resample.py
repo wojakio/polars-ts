@@ -1,4 +1,4 @@
-from typing import Literal, Union
+from typing import Literal, Union, Generic
 
 import polars as pl
 
@@ -11,13 +11,18 @@ from .resample_helper import (
 )
 
 from .tsf import TimeSeriesFrame
-from .types import PartitionType, IntervalType, FillStrategyType, FrameType
+from .types import (
+    PartitionType,
+    IntervalType,
+    FillStrategyType,
+    FrameType,
+)
 
 __NAMESPACE = "rs"
 
 
 @pl.api.register_lazyframe_namespace(__NAMESPACE)
-class ResampleFrame(TimeSeriesFrame):
+class ResampleFrame(TimeSeriesFrame, Generic[FrameType]):
     def __init__(self, df: FrameType):
         super().__init__(df)
 

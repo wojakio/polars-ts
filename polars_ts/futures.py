@@ -1,3 +1,4 @@
+from typing import Generic
 import polars as pl
 
 from .sf import SeriesFrame
@@ -13,7 +14,7 @@ __NAMESPACE = "future"
 
 
 @pl.api.register_lazyframe_namespace(__NAMESPACE)
-class FuturesFrame(SeriesFrame):
+class FuturesFrame(SeriesFrame, Generic[FrameType]):
     def __init__(self, df: FrameType) -> None:
         super().__init__(df)
 

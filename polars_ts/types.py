@@ -1,7 +1,7 @@
-from typing import Literal, Optional, Mapping, List, Union
+from typing import Literal, Optional, Mapping, List, TypeVar
 import polars as pl
 
-FrameType = Union[pl.LazyFrame, pl.DataFrame]
+FrameType = TypeVar("FrameType", pl.LazyFrame, pl.DataFrame)
 
 RetainValuesType = Literal["lhs", "rhs", "both"]
 FillStrategyType = Literal["none", "sentinel", "forward", "backward"]

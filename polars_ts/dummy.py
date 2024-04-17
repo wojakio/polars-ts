@@ -1,4 +1,4 @@
-from typing import List, Union, Literal, Mapping, Optional
+from typing import List, Union, Literal, Optional, Generic
 
 import polars as pl
 
@@ -12,16 +12,16 @@ from .dummy_helper import (
     impl_random_uniform,
     impl_enum,
 )
-from .types import FrameType
 
 from .utils import parse_into_expr
+from .types import FrameType, PartitionType
 
 __NAMESPACE = "dummy"
 
 
 @pl.api.register_lazyframe_namespace(__NAMESPACE)
-class DummyFrame(SeriesFrame):
-    def __init__(self, df: pl.LazyFrame):
+class DummyFrame(SeriesFrame, Generic[FrameType]):
+    def __init__(self, df: FrameType):
         super().__init__(df)
 
     def random_category_subgroups(
@@ -31,7 +31,7 @@ class DummyFrame(SeriesFrame):
         *,
         max_num_subgroups: Optional[int] = None,
         seed: int = 42,
-        partition: Optional[Mapping[Literal["by", "but"], List[str]]] = None,
+        partition: PartitionType = None,
         out: str = "subgroup",
     ) -> FrameType:
         prefix = parse_into_expr(prefix)
@@ -54,7 +54,7 @@ class DummyFrame(SeriesFrame):
         lower: Union[pl.Expr, float] = 0.0,
         upper: Union[pl.Expr, float] = 1.0,
         *,
-        partition: Optional[Mapping[Literal["by", "but"], List[str]]] = None,
+        partition: PartitionType = None,
         out: str = "value",
     ) -> FrameType:
         df = impl_random_uniform(self._df, lower, upper, partition, out)
@@ -66,7 +66,7 @@ class DummyFrame(SeriesFrame):
         mu: Union[pl.Expr, float] = 0.0,
         sigma: Union[pl.Expr, float] = 1.0,
         *,
-        partition: Optional[Mapping[Literal["by", "but"], List[str]]] = None,
+        partition: PartitionType = None,
         out: str = "value",
     ) -> FrameType:
         df = impl_random_normal(self._df, partition, out, mu, sigma)

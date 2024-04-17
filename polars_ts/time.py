@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Generic
 
 import polars as pl
 
@@ -12,7 +12,7 @@ __NAMESPACE = "time"
 
 
 @pl.api.register_lazyframe_namespace(__NAMESPACE)
-class TimeFrame(SeriesFrame):
+class TimeFrame(SeriesFrame, Generic[FrameType]):
     def __init__(self, df: FrameType) -> None:
         super().__init__(df)
 

@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Generic
 
 import polars as pl
 from polars.type_aliases import IntoExpr
@@ -19,7 +19,7 @@ __NAMESPACE = "calendar"
 
 
 @pl.api.register_lazyframe_namespace(__NAMESPACE)
-class CalendarFrame(SeriesFrame):
+class CalendarFrame(SeriesFrame, Generic[FrameType]):
     def __init__(self, df: FrameType):
         super().__init__(df)
 

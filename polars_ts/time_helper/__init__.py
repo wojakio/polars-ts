@@ -4,9 +4,7 @@ from typing import Optional
 import polars as pl
 
 
-from ..types import (
-    FrameType,
-)
+from ..types import FrameType
 
 
 def impl_range(
@@ -26,10 +24,10 @@ def impl_range(
         )
     )
 
-    return impl_expand(result, interval)
+    return _impl_expand(result, interval)
 
 
-def impl_expand(df: FrameType, interval: str) -> FrameType:
+def _impl_expand(df: FrameType, interval: str) -> FrameType:
     # pre: every row has a time: list[date] column
     # xdt doesnt support date_ranges?
     # fn = xdt.date_range if interval.endswith('bd') else pl.date_ranges

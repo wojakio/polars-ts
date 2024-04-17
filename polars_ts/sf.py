@@ -1,4 +1,4 @@
-from typing import Iterable, List
+from typing import Iterable, List, Generic
 
 import polars as pl
 
@@ -9,9 +9,9 @@ __NAMESPACE = "sf"
 
 
 @pl.api.register_lazyframe_namespace(__NAMESPACE)
-class SeriesFrame:
+class SeriesFrame(Generic[FrameType]):
     def __init__(self, df: FrameType):
-        self._df = df.with_columns(
+        self._df: FrameType = df.with_columns(
             pl.lit(0, pl.Boolean).cast(pl.Categorical).alias(RESERVED_ALL_GRP)
         )
 
