@@ -3,6 +3,7 @@ from typing import List, Union, Literal, Optional, Generic
 import polars as pl
 
 from polars.type_aliases import IntoExpr
+from .grouper import Grouper
 
 from .sf import SeriesFrame
 from .sf_helper import prepare_result
@@ -14,7 +15,7 @@ from .dummy_helper import (
 )
 
 from .utils import parse_into_expr
-from .types import FrameType, PartitionType
+from .types import FrameType
 
 __NAMESPACE = "dummy"
 
@@ -31,7 +32,7 @@ class DummyFrame(SeriesFrame, Generic[FrameType]):
         *,
         max_num_subgroups: Optional[int] = None,
         seed: int = 42,
-        partition: PartitionType = None,
+        partition: Grouper = Grouper(),
         out: str = "subgroup",
     ) -> FrameType:
         prefix = parse_into_expr(prefix)
@@ -54,7 +55,7 @@ class DummyFrame(SeriesFrame, Generic[FrameType]):
         lower: Union[pl.Expr, float] = 0.0,
         upper: Union[pl.Expr, float] = 1.0,
         *,
-        partition: PartitionType = None,
+        partition: Grouper = Grouper(),
         out: str = "value",
     ) -> FrameType:
         df = impl_random_uniform(self._df, lower, upper, partition, out)
@@ -66,7 +67,7 @@ class DummyFrame(SeriesFrame, Generic[FrameType]):
         mu: Union[pl.Expr, float] = 0.0,
         sigma: Union[pl.Expr, float] = 1.0,
         *,
-        partition: PartitionType = None,
+        partition: Grouper = Grouper(),
         out: str = "value",
     ) -> FrameType:
         df = impl_random_normal(self._df, partition, out, mu, sigma)

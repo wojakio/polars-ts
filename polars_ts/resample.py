@@ -2,7 +2,7 @@ from typing import Literal, Union, Generic
 
 import polars as pl
 
-from .sf_helper import impl_auto_partition, prepare_result
+from .sf_helper import prepare_result
 
 from .resample_helper import (
     impl_align_to_time,
@@ -10,9 +10,9 @@ from .resample_helper import (
     impl_resample_categories,
 )
 
+from .grouper import Grouper
 from .tsf import TimeSeriesFrame
 from .types import (
-    PartitionType,
     IntervalType,
     FillStrategyType,
     FrameType,
@@ -30,14 +30,14 @@ class ResampleFrame(TimeSeriesFrame, Generic[FrameType]):
         self,
         period: str,
         *,
-        partition: PartitionType = None,
+        partition: Grouper = Grouper(),
         value_col: str = "value",
     ) -> FrameType:
-        partition = impl_auto_partition(self._df, partition)
+        grouper_cols = partition.apply(self._df)
 
         df = (
             self._df.sort("time")
-            .group_by_dynamic("time", every=period, group_by=partition)
+            .group_by_dynamic("time", every=period, group_by=grouper_cols)
             .agg(
                 pl.first(value_col).alias("open"),
                 pl.max(value_col).alias("high"),
@@ -51,7 +51,7 @@ class ResampleFrame(TimeSeriesFrame, Generic[FrameType]):
     def align_to_time(
         self,
         time_axis: pl.Series,
-        partition: PartitionType = None,
+        partition: Grouper = Grouper(),
         closed: IntervalType = "left",
         fill_strategy: FillStrategyType = "forward",
         fill_sentinel: Union[float, int] = 0.0,
@@ -65,7 +65,7 @@ class ResampleFrame(TimeSeriesFrame, Generic[FrameType]):
     def resample_categories(
         self,
         time_axis: pl.Series,
-        partition: PartitionType = None,
+        partition: Grouper = Grouper(),
         closed: IntervalType = "left",
     ) -> FrameType:
         df = impl_resample_categories(self._df, time_axis, partition, closed)
@@ -75,7 +75,7 @@ class ResampleFrame(TimeSeriesFrame, Generic[FrameType]):
     def align_values(
         self,
         rhs: FrameType,
-        partition: PartitionType = None,
+        partition: Grouper = Grouper(),
         retain_values: Literal["lhs", "rhs", "both"] = "lhs",
         fill_strategy: FillStrategyType = "forward",
         fill_sentinel: Union[float, int] = 0.0,

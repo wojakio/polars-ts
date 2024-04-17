@@ -62,5 +62,12 @@ def test_basic(df):
     assert Grouper.by_common().apply(df, df) == ["catsa", "catsb"]
     assert Grouper.by_time_and_common().apply(df, df) == ["time", "catsa", "catsb"]
 
-    # assert Grouper.omitting_time_and("catsa", "catsb").apply(df) == []
-    # assert Grouper.omitting("time", "catsa", "catsb").apply(df) == []
+    with pytest.raises(ValueError, match="Empty Grouper Specification"):
+        assert Grouper.omitting_time_and("catsa", "catsb").apply(df) == []
+
+    with pytest.raises(ValueError, match="Empty Grouper Specification"):
+        assert Grouper.omitting("time", "catsa", "catsb").apply(df) == []
+
+
+def test_default(df):
+    assert Grouper().apply(df) == Grouper.by_all().apply(df)

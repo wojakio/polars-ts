@@ -2,6 +2,7 @@ import polars as pl
 
 from ..types import FrameType
 from ..dummy_helper import impl_random_normal
+from ..grouper import Grouper
 
 
 def impl_fetch_instrument_prices(
@@ -18,7 +19,7 @@ def impl_fetch_instrument_prices(
         .explode(pl.col("time"))
         .pipe(
             lambda df: impl_random_normal(
-                df, partition=None, out="value", mu=0.0, sigma=1.0
+                df, partition=Grouper(), out="value", mu=0.0, sigma=1.0
             )
         )
         .filter(pl.col("time").dt.weekday().is_in(hols).not_())

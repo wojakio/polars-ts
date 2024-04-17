@@ -6,6 +6,7 @@ import polars as pl
 
 class Grouper:
     def __init__(self) -> None:
+        self._has_defined_spec = False
         self._by: FrozenSet[str] = frozenset()
         self._omitting: FrozenSet[str] = frozenset()
         self._all: bool = False
@@ -22,12 +23,14 @@ class Grouper:
     def by(*cols: str | Iterable[str]) -> "Grouper":
         g = Grouper()
         g._by, g._result_includes_time = Grouper._make_set(*cols)
+        g._has_defined_spec = True
         return g
 
     @staticmethod
     def by_time() -> "Grouper":
         g = Grouper()
         g._result_includes_time = True
+        g._has_defined_spec = True
         return g
 
     @staticmethod
@@ -35,6 +38,7 @@ class Grouper:
         g = Grouper()
         g._by, _ = Grouper._make_set(*cols)
         g._result_includes_time = True
+        g._has_defined_spec = True
         return g
 
     @staticmethod
@@ -42,6 +46,7 @@ class Grouper:
         g = Grouper()
         g._omitting, time_omitted = Grouper._make_set(*cols)
         g._result_includes_time = not time_omitted
+        g._has_defined_spec = True
         return g
 
     @staticmethod
@@ -49,12 +54,14 @@ class Grouper:
         g = Grouper()
         g._omitting, _ = Grouper._make_set(*cols)
         g._result_includes_time = False
+        g._has_defined_spec = True
         return g
 
     @staticmethod
     def by_all() -> "Grouper":
         g = Grouper()
         g._all = True
+        g._has_defined_spec = True
         return g
 
     @staticmethod
@@ -62,12 +69,14 @@ class Grouper:
         g = Grouper()
         g._all = True
         g._result_includes_time = True
+        g._has_defined_spec = True
         return g
 
     @staticmethod
     def by_common() -> "Grouper":
         g = Grouper()
         g._common = True
+        g._has_defined_spec = True
         return g
 
     @staticmethod
@@ -75,6 +84,7 @@ class Grouper:
         g = Grouper()
         g._common = True
         g._result_includes_time = True
+        g._has_defined_spec = True
         return g
 
     @staticmethod
@@ -104,6 +114,9 @@ class Grouper:
             df_has_time = ("time" in df) and ("time" in df_other)
             cols = set(Grouper._get_common_categories_without_time(df, df_other))
         else:
+            if not self._has_defined_spec:
+                self._all = True
+
             df = dfs[0]
             df_has_time = "time" in df
             cols = set(Grouper._get_categories_without_time(df))

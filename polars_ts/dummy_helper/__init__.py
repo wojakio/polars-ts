@@ -2,9 +2,10 @@ from typing import Union
 
 import polars as pl
 
-from ..sf_helper import impl_auto_partition, RESERVED_ROW_IDX
+from ..sf_helper import RESERVED_ROW_IDX
 
-from ..types import FrameType, PartitionType
+from ..types import FrameType
+from ..grouper import Grouper
 from typing import List, Literal
 
 from ..expr.random import (
@@ -20,10 +21,10 @@ def impl_random_category_subgroups(
     sizes: List[int],
     max_num_subgroups: int,
     seed: int,
-    partition: PartitionType,
+    partition: Grouper,
     out: str,
 ) -> FrameType:
-    split = impl_auto_partition(df, partition)
+    grouper_cols = partition.apply(df)
     idxs = (
         pl.Series(sizes, dtype=pl.UInt64)
         .sample(n=max_num_subgroups, with_replacement=True, seed=seed)
@@ -39,7 +40,7 @@ def impl_random_category_subgroups(
             .cum_sum()
             .cast(pl.String),
         )
-        .over(split)
+        .over(grouper_cols)
         .cast(pl.Categorical)
         .alias(out)
     )
@@ -51,13 +52,13 @@ def impl_random_uniform(
     df: FrameType,
     lower: Union[pl.Expr, float],
     upper: Union[pl.Expr, float],
-    partition: PartitionType,
+    partition: Grouper,
     out: str,
 ) -> FrameType:
-    split = impl_auto_partition(df, partition)
+    grouper_cols = partition.apply(df)
     result = df.with_columns(
-        rand_uniform(lower, upper, seed=wyhash(pl.concat_str(split).first()))
-        .over(split)
+        rand_uniform(lower, upper, seed=wyhash(pl.concat_str(grouper_cols).first()))
+        .over(grouper_cols)
         .alias(out)
     )
 
@@ -69,15 +70,15 @@ def impl_random_uniform(
 
 def impl_random_normal(
     df: FrameType,
-    partition: PartitionType,
+    partition: Grouper,
     out: str,
     mu: Union[pl.Expr, float],
     sigma: Union[pl.Expr, float],
 ) -> FrameType:
-    split = impl_auto_partition(df, partition)
+    grouper_cols = partition.apply(df)
     result = df.with_columns(
-        rand_normal(mu, sigma, seed=wyhash(pl.concat_str(split).first()))
-        .over(split)
+        rand_normal(mu, sigma, seed=wyhash(pl.concat_str(grouper_cols).first()))
+        .over(grouper_cols)
         .alias(out)
     )
 
