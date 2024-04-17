@@ -1,16 +1,24 @@
-from typing import List, Literal, Mapping, Optional, Union
+from typing import Literal, Union
 
 import polars as pl
 
-from .resample_helper import *
+from .sf_helper import impl_auto_partition, prepare_result
+
+from .resample_helper import (
+    impl_align_to_time,
+    impl_align_values,
+    impl_resample_categories,
+)
+
 from .tsf import TimeSeriesFrame
-from .types import *
+from .types import PartitionType, IntervalType, FillStrategyType, FrameType
 
 __NAMESPACE = "rs"
 
+
 @pl.api.register_lazyframe_namespace(__NAMESPACE)
 class ResampleFrame(TimeSeriesFrame):
-    def __init__(self, df: pl.LazyFrame):
+    def __init__(self, df: FrameType):
         super().__init__(df)
 
     def to_ohlc(
@@ -19,7 +27,7 @@ class ResampleFrame(TimeSeriesFrame):
         *,
         partition: PartitionType = None,
         value_col: str = "value",
-    ) -> pl.LazyFrame:
+    ) -> FrameType:
         partition = impl_auto_partition(self._df, partition)
 
         df = (
@@ -35,62 +43,40 @@ class ResampleFrame(TimeSeriesFrame):
 
         return prepare_result(df)
 
-
     def align_to_time(
         self,
         time_axis: pl.Series,
         partition: PartitionType = None,
-        closed: IntervalType = 'left',
-        fill_strategy: FillStrategyType = 'forward',
-        fill_sentinel: Union[float, int]=0.,
-    ) -> pl.LazyFrame:
-
+        closed: IntervalType = "left",
+        fill_strategy: FillStrategyType = "forward",
+        fill_sentinel: Union[float, int] = 0.0,
+    ) -> FrameType:
         df = impl_align_to_time(
-            self._df,
-            time_axis,
-            partition,
-            closed,
-            fill_strategy,
-            fill_sentinel
+            self._df, time_axis, partition, closed, fill_strategy, fill_sentinel
         )
 
         return prepare_result(df)
-        
 
     def resample_categories(
         self,
         time_axis: pl.Series,
         partition: PartitionType = None,
-        closed: IntervalType = 'left'
-    ) -> pl.LazyFrame:
-
-        df = impl_resample_categories(
-            self._df,
-            time_axis,
-            partition,
-            closed
-        )
+        closed: IntervalType = "left",
+    ) -> FrameType:
+        df = impl_resample_categories(self._df, time_axis, partition, closed)
 
         return prepare_result(df)
-
 
     def align_values(
         self,
-        rhs: pl.LazyFrame,
+        rhs: FrameType,
         partition: PartitionType = None,
-        retain_values: Literal['lhs', 'rhs', 'both'] = 'lhs',
-        fill_strategy: FillStrategyType = 'forward',
-        fill_sentinel: Union[float, int] = 0.
-    ) -> pl.LazyFrame:
-
+        retain_values: Literal["lhs", "rhs", "both"] = "lhs",
+        fill_strategy: FillStrategyType = "forward",
+        fill_sentinel: Union[float, int] = 0.0,
+    ) -> FrameType:
         df = impl_align_values(
-            self._df,
-            rhs,
-            partition,
-            retain_values,
-            fill_strategy,
-            fill_sentinel
+            self._df, rhs, partition, retain_values, fill_strategy, fill_sentinel
         )
 
         return prepare_result(df)
-   

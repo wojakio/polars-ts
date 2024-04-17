@@ -1,11 +1,12 @@
 import polars as pl
 
 from .util import month_to_imm_dict, make_generic_contract
+from ..types import FrameType
 
 
 def guess_security_meta(
-    generic_contracts: pl.LazyFrame, roll_config: pl.LazyFrame
-) -> pl.LazyFrame:
+    generic_contracts: FrameType, roll_config: FrameType
+) -> FrameType:
     df = (
         roll_config.join(generic_contracts, on="asset")
         .filter(
@@ -50,7 +51,7 @@ def _guess_fut_first_trade_dt(
     return first_trade_dt
 
 
-def asset_carry_contracts(roll_config: pl.LazyFrame) -> pl.LazyFrame:
+def asset_carry_contracts(roll_config: FrameType) -> FrameType:
     def _find_carry_month(hc: dict):
         allowed_contracts = hc["priced_roll_cycle"]
         current_contract = hc["hold_roll_cycle"]
@@ -108,7 +109,7 @@ def asset_carry_contracts(roll_config: pl.LazyFrame) -> pl.LazyFrame:
     )
 
 
-def asset_near_far_contracts(roll_config: pl.LazyFrame) -> pl.LazyFrame:
+def asset_near_far_contracts(roll_config: FrameType) -> FrameType:
     return (
         roll_config.select(
             "asset",
@@ -145,7 +146,7 @@ def asset_near_far_contracts(roll_config: pl.LazyFrame) -> pl.LazyFrame:
     )
 
 
-def asset_contracts(roll_config: pl.LazyFrame) -> pl.LazyFrame:
+def asset_contracts(roll_config: FrameType) -> FrameType:
     return (
         asset_near_far_contracts(roll_config)
         .join(
@@ -161,8 +162,8 @@ def asset_contracts(roll_config: pl.LazyFrame) -> pl.LazyFrame:
 
 
 def create_roll_calendar_helper(
-    roll_config: pl.LazyFrame, security_dates: pl.LazyFrame, include_debug: bool
-) -> pl.LazyFrame:
+    roll_config: FrameType, security_dates: FrameType, include_debug: bool
+) -> FrameType:
     result_schema = [
         "roll_date",
         "asset",

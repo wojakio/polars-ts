@@ -2,7 +2,12 @@ import polars as pl
 from polars.type_aliases import IntoExpr
 
 from .sf import SeriesFrame
+from .sf_helper import prepare_result
 from .utils import parse_into_expr
+from .dummymkt_helper import (
+    impl_fetch_instrument_prices,
+    impl_fetch_roll_calendar_prices,
+)
 
 __NAMESPACE = "dummymkt"
 
@@ -17,47 +22,14 @@ class DummyMktFrame(SeriesFrame):
     ) -> pl.LazyFrame:
         start_dt_expr = parse_into_expr(start_dt, dtype=pl.Date)
         end_dt_expr = parse_into_expr(end_dt, dtype=pl.Date)
-        hols = [6, 7] if remove_weekends else []
 
-        df = (
-            self._df.select(
-                time=pl.date_ranges(start_dt_expr, end_dt_expr),
-                asset=pl.col("asset"),
-                instrument_id=pl.col("instrument_id"),
-            )
-            .explode(pl.col("time"))
-            .dummy.random_normal()  # type: ignore[attr-defined]
-            .filter(pl.col("time").dt.weekday().is_in(hols).not_())
-            .with_columns(pl.col("value").cum_sum().over("asset", "instrument_id"))
+        df = impl_fetch_instrument_prices(
+            self._df, start_dt_expr, end_dt_expr, remove_weekends
         )
-
-        return df
+        return prepare_result(df)
 
     def fetch_roll_calendar_prices(
         self, roll_calendar: pl.LazyFrame, instrument_prices: pl.LazyFrame
     ) -> pl.LazyFrame:
-        prices = instrument_prices.rename({"time": "roll_date"})
-
-        df = (
-            roll_calendar.join(
-                prices.rename(
-                    {"instrument_id": "near_contract", "value": "near_price"}
-                ),
-                on=["roll_date", "asset", "near_contract"],
-                how="left",
-            )
-            .join(
-                prices.rename({"instrument_id": "far_contract", "value": "far_price"}),
-                on=["roll_date", "asset", "far_contract"],
-                how="left",
-            )
-            .join(
-                prices.rename(
-                    {"instrument_id": "carry_contract", "value": "carry_price"}
-                ),
-                on=["roll_date", "asset", "carry_contract"],
-                how="left",
-            )
-        )
-
-        return df
+        df = impl_fetch_roll_calendar_prices(roll_calendar, instrument_prices)
+        return prepare_result(df)
