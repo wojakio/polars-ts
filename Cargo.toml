@@ -1,6 +1,6 @@
 [package]
 name = "polars-ts"
-version = "0.0.4"
+version = "0.0.5"
 edition = "2021"
 
 [lib]
@@ -8,10 +8,10 @@ name = "polars_ts"
 crate-type= ["cdylib"]
 
 [dependencies]
-pyo3 = { version = "0.21.1", features = ["extension-module", "abi3-py38"] }
+pyo3 = { version = "0.21.2", features = ["extension-module", "abi3-py38"] }
 pyo3-polars = { version = "0.13.0", features = ["derive"] }
 serde = { version = "1", features = ["derive"] }
-polars = { version = "0.39.1", default-features = false }
+polars = { version = "0.39.2", default-features = false }
 rand = "0.8.5"
 rand_distr = "0.4.3"
 wyhash = "0.5.0"

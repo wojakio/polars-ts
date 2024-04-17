@@ -43,3 +43,4 @@ class TimeFrame(SeriesFrame):
         ).explode("time")
 
         return self.result_df
+
