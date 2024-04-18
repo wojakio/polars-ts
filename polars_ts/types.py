@@ -10,3 +10,5 @@ IntervalType = Literal["none", "left", "right", "both"]
 CorrelationType = Literal[
     "additive", "multiplicative", "shift", "exponent", "average", "none"
 ]
+
+NullBehaviorType = Literal["drop", "ignore"]

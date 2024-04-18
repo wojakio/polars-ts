@@ -11,6 +11,7 @@ from .tsf import *
 from .loader import *
 from .time import *
 from .dummy import *
+from .mathx import *
 from .resample import *
 
 from .calendar import *

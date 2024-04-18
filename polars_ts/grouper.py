@@ -88,18 +88,33 @@ class Grouper:
         return g
 
     @staticmethod
-    def _get_common_categories_without_time(
-        lhs: FrameType, rhs: FrameType
+    def common_categories(
+        lhs: FrameType, rhs: FrameType, include_time: bool = False
     ) -> List[str]:
-        cat_lhs = Grouper._get_categories_without_time(lhs)
-        cat_rhs = Grouper._get_categories_without_time(rhs)
-        common = set(cat_lhs).intersection(cat_rhs)
+        cat_lhs = Grouper.categories(lhs, include_time)
+        cat_rhs = Grouper.categories(rhs, include_time)
+        cols = set(cat_lhs).intersection(cat_rhs)
 
-        return sorted(common)
+        return sorted(cols)
 
     @staticmethod
-    def _get_categories_without_time(df: FrameType) -> List[str]:
-        return df.select(pl.col(pl.Categorical, pl.Enum)).columns
+    def categories(df: FrameType, include_time: bool) -> List[str]:
+        cols = df.select(pl.col(pl.Categorical, pl.Enum)).columns
+        if include_time:
+            cols = ["time"] + sorted(cols)
+
+        return cols
+
+    @staticmethod
+    def values(df: FrameType) -> List[str]:
+        cats = set(Grouper.categories(df, include_time=True))
+        cols = set(df.columns).difference(cats)
+        return sorted(cols)
+
+    @staticmethod
+    def numeric(df: FrameType) -> List[str]:
+        cols = df.select(pl.col(pl.NUMERIC_DTYPES)).columns
+        return sorted(cols)
 
     def apply(self, *dfs: FrameType) -> List[str]:
         if self._common and len(dfs) < 2:
@@ -112,14 +127,14 @@ class Grouper:
             df = dfs[0]
             df_other = dfs[1]
             df_has_time = ("time" in df) and ("time" in df_other)
-            cols = set(Grouper._get_common_categories_without_time(df, df_other))
+            cols = set(Grouper.common_categories(df, df_other))
         else:
             if not self._has_defined_spec:
                 self._all = True
 
             df = dfs[0]
             df_has_time = "time" in df
-            cols = set(Grouper._get_categories_without_time(df))
+            cols = set(Grouper.categories(df, include_time=False))
 
             if len(self._by) > 0:
                 cols = cols.intersection(self._by)
