@@ -49,8 +49,8 @@ class MathxFrame(SeriesFrame, Generic[FrameType]):
 
     def ewm_mean(
         self,
-        alpha: int = 1,
+        half_life: float,
         partition: Grouper = Grouper(),
     ) -> FrameType:
-        df = impl_ewm_mean(self._df, alpha, partition)
+        df = impl_ewm_mean(self._df, half_life, partition)
         return prepare_result(df)

@@ -1,3 +1,4 @@
+import math
 from typing import Literal
 
 import polars as pl
@@ -56,13 +57,19 @@ def impl_shift(
 
 def impl_ewm_mean(
     df: FrameType,
-    alpha: int,
+    half_life: float,
     partition: Grouper,
 ) -> FrameType:
     grouper_cols = partition.apply(df)
     numeric_cols = partition.numerics(df)
 
     result = df.with_columns(
-        pl.col(numeric_cols).ewm_mean(alpha=alpha).over(grouper_cols)
+        pl.col(numeric_cols)
+        .ewm_mean(half_life=half_life, ignore_nulls=True, adjust=True)
+        .over(grouper_cols)
     )
     return result
+
+
+def half_life_to_alpha(lam: float) -> float:
+    return -1 / math.log(lam)

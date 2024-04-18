@@ -94,7 +94,7 @@ def impl_align_values(
         isinstance(lhs, pl.LazyFrame) or isinstance(lhs, pl.DataFrame)
     )
 
-    grouper_cols: List[str] = partition.by_common().apply(lhs, rhs)
+    grouper_cols: List[str] = partition.apply(lhs, rhs)
 
     result = (
         lhs.join(rhs, on=["time", *grouper_cols], how="outer_coalesce")

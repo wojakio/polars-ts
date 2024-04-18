@@ -73,14 +73,14 @@ class Grouper:
         return g
 
     @staticmethod
-    def by_common() -> "Grouper":
+    def by_common_excluding_time() -> "Grouper":
         g = Grouper()
         g._common = True
         g._has_defined_spec = True
         return g
 
     @staticmethod
-    def by_time_and_common() -> "Grouper":
+    def by_common_including_time() -> "Grouper":
         g = Grouper()
         g._common = True
         g._result_includes_time = True

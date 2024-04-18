@@ -75,7 +75,7 @@ class ResampleFrame(TimeSeriesFrame, Generic[FrameType]):
     def align_values(
         self,
         rhs: FrameType,
-        partition: Grouper = Grouper(),
+        partition: Grouper = Grouper().by_common_including_time(),
         retain_values: Literal["lhs", "rhs", "both"] = "lhs",
         null_strategy: NullStrategyType = "forward",
         null_sentinel_numeric: Union[float, int] = 0.0,
