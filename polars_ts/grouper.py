@@ -117,11 +117,14 @@ class Grouper:
         return sorted(cols)
 
     def apply(self, *dfs: FrameType) -> List[str]:
+        if not self._has_defined_spec:
+            raise ValueError("A Grouper spec has not been defined.")
+
         if self._common and len(dfs) < 2:
             raise ValueError("Require at least 2 dataframes when 'common' flag is set.")
 
         if not self._common and len(dfs) != 1:
-            raise ValueError("Too many arguments passed to apply.")
+            raise ValueError(f"Too many arguments passed to {str(self)}.apply(...)")
 
         if self._common:
             df = dfs[0]
@@ -167,5 +170,9 @@ class Grouper:
         if self._all:
             time_clause = "TimeAnd" if self._result_includes_time else ""
             return f"By{time_clause}All"
+
+        if self._common:
+            time_clause = "TimeAnd" if self._result_includes_time else ""
+            return f"By{time_clause}Common"
 
         return "ByNone"

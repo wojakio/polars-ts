@@ -1,4 +1,4 @@
-from typing import Union, List
+from typing import Union
 
 import polars as pl
 
@@ -90,16 +90,11 @@ def impl_align_values(
         lhs_cat_cols = Grouper.categories(lhs, include_time=True)
         lhs = lhs.select(lhs_cat_cols)
 
-    assert isinstance(lhs, type(rhs)) and (
-        isinstance(lhs, pl.LazyFrame) or isinstance(lhs, pl.DataFrame)
-    )
-
-    grouper_cols: List[str] = partition.apply(lhs, rhs)
-
+    common_cols = Grouper().by_common_including_time().apply(lhs, rhs)
     result = (
-        lhs.join(rhs, on=["time", *grouper_cols], how="outer_coalesce")
+        lhs.join(rhs, on=common_cols, how="outer_coalesce")
         .filter(pl.col("time").is_not_null())
-        .sort("time", *grouper_cols)
+        .sort(*common_cols)
         .unique(keep="first", maintain_order=True)
     )
 

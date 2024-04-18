@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 import polars as pl
+import polars_ts  # noqa
 import pytest
 
 
@@ -332,3 +333,19 @@ def test_resample_categories_no_categories(df):
     assert align_left.equals(expected_df)
     assert align_right.equals(expected_df)
     assert align_both.equals(expected_df)
+
+
+def test_align_to_time(df):
+    time_axis = pl.datetime_ranges(
+        df.collect()["time"].min(), df.collect()["time"].max(), eager=True
+    ).explode()
+
+    result = df.rs.align_to_time(
+        time_axis, closed="none", null_strategy="sentinel_numeric"
+    )
+    assert not result.collect().is_empty()
+
+
+def test_align_values(df):
+    result = df.rs.align_values(df).collect()
+    assert df.collect().equals(result)

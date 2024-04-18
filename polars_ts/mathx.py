@@ -23,7 +23,7 @@ class MathxFrame(SeriesFrame, Generic[FrameType]):
         self,
         k: int = 1,
         method: Literal["arithmetic", "fractional", "geometric"] = "arithmetic",
-        partition: Grouper = Grouper(),
+        partition: Grouper = Grouper().by_all(),
         null_strategy: NullStrategyType = "drop",
         null_sentinel_numeric: SentinelNumeric = 0.0,
     ) -> FrameType:
@@ -32,7 +32,7 @@ class MathxFrame(SeriesFrame, Generic[FrameType]):
         )
         return prepare_result(df)
 
-    def cum_sum(self, partition: Grouper = Grouper()) -> FrameType:
+    def cum_sum(self, partition: Grouper = Grouper().by_all()) -> FrameType:
         df = impl_cum_sum(self._df, partition)
 
         return prepare_result(df)
@@ -42,7 +42,7 @@ class MathxFrame(SeriesFrame, Generic[FrameType]):
         k: int = 1,
         null_strategy: NullStrategyType = "ignore",
         null_sentinel_numeric: SentinelNumeric = 0.0,
-        partition: Grouper = Grouper(),
+        partition: Grouper = Grouper().by_all(),
     ) -> FrameType:
         df = impl_shift(self._df, k, null_strategy, null_sentinel_numeric, partition)
         return prepare_result(df)
@@ -50,7 +50,7 @@ class MathxFrame(SeriesFrame, Generic[FrameType]):
     def ewm_mean(
         self,
         half_life: float,
-        partition: Grouper = Grouper(),
+        partition: Grouper = Grouper().by_all(),
     ) -> FrameType:
         df = impl_ewm_mean(self._df, half_life, partition)
         return prepare_result(df)

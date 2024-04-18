@@ -32,7 +32,7 @@ class DummyFrame(SeriesFrame, Generic[FrameType]):
         *,
         max_num_subgroups: Optional[int] = None,
         seed: int = 42,
-        partition: Grouper = Grouper(),
+        partition: Grouper = Grouper().by_all(),
         out: str = "subgroup",
     ) -> FrameType:
         prefix = parse_into_expr(prefix)
@@ -55,7 +55,7 @@ class DummyFrame(SeriesFrame, Generic[FrameType]):
         lower: Union[pl.Expr, float] = 0.0,
         upper: Union[pl.Expr, float] = 1.0,
         *,
-        partition: Grouper = Grouper(),
+        partition: Grouper = Grouper().by_all(),
         out: str = "value",
     ) -> FrameType:
         df = impl_random_uniform(self._df, lower, upper, partition, out)
@@ -67,7 +67,7 @@ class DummyFrame(SeriesFrame, Generic[FrameType]):
         mu: Union[pl.Expr, float] = 0.0,
         sigma: Union[pl.Expr, float] = 1.0,
         *,
-        partition: Grouper = Grouper(),
+        partition: Grouper = Grouper().by_all(),
         out: str = "value",
     ) -> FrameType:
         df = impl_random_normal(self._df, partition, out, mu, sigma)

@@ -30,7 +30,7 @@ class ResampleFrame(TimeSeriesFrame, Generic[FrameType]):
         self,
         period: str,
         *,
-        partition: Grouper = Grouper(),
+        partition: Grouper = Grouper().by_all(),
         value_col: str = "value",
     ) -> FrameType:
         grouper_cols = partition.apply(self._df)
@@ -51,7 +51,7 @@ class ResampleFrame(TimeSeriesFrame, Generic[FrameType]):
     def align_to_time(
         self,
         time_axis: pl.Series,
-        partition: Grouper = Grouper(),
+        partition: Grouper = Grouper().by_all(),
         closed: IntervalType = "left",
         null_strategy: NullStrategyType = "forward",
         null_sentinel_numeric: Union[float, int] = 0.0,
@@ -65,7 +65,7 @@ class ResampleFrame(TimeSeriesFrame, Generic[FrameType]):
     def resample_categories(
         self,
         time_axis: pl.Series,
-        partition: Grouper = Grouper(),
+        partition: Grouper = Grouper().by_all(),
         closed: IntervalType = "left",
     ) -> FrameType:
         df = impl_resample_categories(self._df, time_axis, partition, closed)
@@ -75,7 +75,7 @@ class ResampleFrame(TimeSeriesFrame, Generic[FrameType]):
     def align_values(
         self,
         rhs: FrameType,
-        partition: Grouper = Grouper().by_common_including_time(),
+        partition: Grouper = Grouper().by_all(),
         retain_values: Literal["lhs", "rhs", "both"] = "lhs",
         null_strategy: NullStrategyType = "forward",
         null_sentinel_numeric: Union[float, int] = 0.0,

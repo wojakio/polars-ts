@@ -14,7 +14,7 @@ __NAMESPACE = "sf"
 class SeriesFrame(Generic[FrameType]):
     def __init__(self, df: FrameType):
         self._df: FrameType = df.with_columns(
-            pl.lit(0, pl.Boolean).cast(pl.Categorical).alias(RESERVED_ALL_GRP)
+            pl.lit("_placeholder_").cast(pl.Categorical).alias(RESERVED_ALL_GRP)
         )
 
     def join(

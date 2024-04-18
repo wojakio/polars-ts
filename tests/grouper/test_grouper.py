@@ -67,11 +67,12 @@ def test_basic(df):
     ]
 
     with pytest.raises(ValueError, match="Empty Grouper Specification"):
-        assert Grouper.omitting_time_and("catsa", "catsb").apply(df) == []
+        Grouper.omitting_time_and("catsa", "catsb").apply(df) == []
 
     with pytest.raises(ValueError, match="Empty Grouper Specification"):
-        assert Grouper.omitting("time", "catsa", "catsb").apply(df) == []
+        Grouper.omitting("time", "catsa", "catsb").apply(df) == []
 
 
 def test_default(df):
-    assert Grouper().apply(df) == Grouper.by_all().apply(df)
+    with pytest.raises(ValueError, match="A Grouper spec has not been defined"):
+        Grouper().apply(df)

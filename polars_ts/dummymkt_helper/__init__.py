@@ -19,7 +19,7 @@ def impl_fetch_instrument_prices(
         .explode(pl.col("time"))
         .pipe(
             lambda df: impl_random_normal(
-                df, partition=Grouper(), out="value", mu=0.0, sigma=1.0
+                df, partition=Grouper().by_all(), out="value", mu=0.0, sigma=1.0
             )
         )
         .filter(pl.col("time").dt.weekday().is_in(hols).not_())
