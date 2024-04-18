@@ -1,0 +1,4 @@
+asset,hold_roll_cycle,roll_offset,carry_contract_offset,priced_roll_cycle,approximate_expiry_offset
+BITCOIN,FGHJKMNQUVXZ,-4d,1,FGHJKMNQUVXZ,26d
+CRUDE_W,Z,-40d,-1,FGHJKMNQUVXZ,-11d
+EDOLLAR,HMUZ,-1100d,-1,HMUZ,18d
