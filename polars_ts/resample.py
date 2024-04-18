@@ -14,7 +14,7 @@ from .grouper import Grouper
 from .tsf import TimeSeriesFrame
 from .types import (
     IntervalType,
-    FillStrategyType,
+    NullStrategyType,
     FrameType,
 )
 
@@ -53,11 +53,11 @@ class ResampleFrame(TimeSeriesFrame, Generic[FrameType]):
         time_axis: pl.Series,
         partition: Grouper = Grouper(),
         closed: IntervalType = "left",
-        fill_strategy: FillStrategyType = "forward",
-        fill_sentinel: Union[float, int] = 0.0,
+        null_strategy: NullStrategyType = "forward",
+        null_sentinel_numeric: Union[float, int] = 0.0,
     ) -> FrameType:
         df = impl_align_to_time(
-            self._df, time_axis, partition, closed, fill_strategy, fill_sentinel
+            self._df, time_axis, partition, closed, null_strategy, null_sentinel_numeric
         )
 
         return prepare_result(df)
@@ -77,11 +77,16 @@ class ResampleFrame(TimeSeriesFrame, Generic[FrameType]):
         rhs: FrameType,
         partition: Grouper = Grouper(),
         retain_values: Literal["lhs", "rhs", "both"] = "lhs",
-        fill_strategy: FillStrategyType = "forward",
-        fill_sentinel: Union[float, int] = 0.0,
+        null_strategy: NullStrategyType = "forward",
+        null_sentinel_numeric: Union[float, int] = 0.0,
     ) -> FrameType:
         df = impl_align_values(
-            self._df, rhs, partition, retain_values, fill_strategy, fill_sentinel
+            self._df,
+            rhs,
+            partition,
+            retain_values,
+            null_strategy,
+            null_sentinel_numeric,
         )
 
         return prepare_result(df)

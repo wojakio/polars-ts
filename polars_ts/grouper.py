@@ -112,7 +112,7 @@ class Grouper:
         return sorted(cols)
 
     @staticmethod
-    def numeric(df: FrameType) -> List[str]:
+    def numerics(df: FrameType) -> List[str]:
         cols = df.select(pl.col(pl.NUMERIC_DTYPES)).columns
         return sorted(cols)
 

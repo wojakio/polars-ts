@@ -32,15 +32,9 @@ def df() -> pl.LazyFrame:
     return result
 
 
-def test_arithmetic_method(df):
-    diff_drop_nulls = df.mathx.diff(1).collect()
-
-    expected_diff_drop_nulls = df.clear().collect()
-    assert diff_drop_nulls.equals(expected_diff_drop_nulls)
-
-    diff_ignore_nulls = df.mathx.diff(1, null_strategy="ignore").collect()
-
-    expected_diff_ignore_nulls = pl.DataFrame(
+def test_basic(df):
+    cum_sum_one = df.mathx.cum_sum(partition=ts.Grouper().by("catsb")).collect()
+    expected_cum_sum_one = pl.DataFrame(
         [
             pl.Series(
                 "time",
@@ -149,67 +143,69 @@ def test_arithmetic_method(df):
             pl.Series(
                 "flt1",
                 [
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
+                    2.18,
+                    7.18,
+                    12.18,
+                    19.36,
+                    29.36,
+                    39.36,
+                    51.54,
+                    66.53999999999999,
+                    81.53999999999999,
+                    98.72,
+                    118.72,
+                    138.72,
+                    160.9,
+                    185.9,
+                    210.9,
+                    238.08,
+                    268.08000000000004,
+                    298.08000000000004,
+                    330.26,
+                    365.26000000000005,
                 ],
                 dtype=pl.Float64,
             ),
             pl.Series(
                 "flt2",
                 [
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
+                    1.3899999856948853,
+                    6.389999866485596,
+                    11.390000343322754,
+                    17.779998779296875,
+                    27.779998779296875,
+                    37.779998779296875,
+                    49.16999816894531,
+                    64.16999816894531,
+                    79.16999816894531,
+                    95.55999755859375,
+                    115.55999755859375,
+                    135.55999755859375,
+                    156.9499969482422,
+                    181.9499969482422,
+                    206.9499969482422,
+                    233.33999633789062,
+                    263.3399963378906,
+                    293.3399963378906,
+                    324.72998046875,
+                    359.72998046875,
                 ],
                 dtype=pl.Float32,
             ),
         ]
     )
 
-    assert diff_ignore_nulls.equals(expected_diff_ignore_nulls)
+    assert cum_sum_one.equals(expected_cum_sum_one)
 
-    diff_one = df.mathx.diff(1, partition=ts.Grouper().by("catsb")).collect()
-
-    expected_diff_one = pl.DataFrame(
+    cum_sum = df.mathx.cum_sum().collect()
+    expected_cum_sum = pl.DataFrame(
         [
             pl.Series(
                 "time",
                 [
+                    datetime(2024, 1, 2, 0, 0),
+                    datetime(2024, 1, 4, 0, 0),
+                    datetime(2024, 1, 6, 0, 0),
                     datetime(2024, 1, 8, 0, 0),
                     datetime(2024, 1, 10, 0, 0),
                     datetime(2024, 1, 12, 0, 0),
@@ -233,6 +229,9 @@ def test_arithmetic_method(df):
             pl.Series(
                 "text",
                 [
+                    "stext 0",
+                    "stext 5",
+                    "stext 10",
                     "stext 15",
                     "stext 20",
                     "stext 25",
@@ -256,6 +255,9 @@ def test_arithmetic_method(df):
             pl.Series(
                 "catsa",
                 [
+                    "A0",
+                    "A5",
+                    "A10",
                     "A15",
                     "A20",
                     "A25",
@@ -296,138 +298,6 @@ def test_arithmetic_method(df):
                     "B1",
                     "B0",
                     "B2",
-                ],
-                dtype=pl.Categorical(ordering="physical"),
-            ),
-            pl.Series(
-                "flt1",
-                [
-                    15.0,
-                    15.0,
-                    15.0,
-                    15.0,
-                    15.0,
-                    15.0,
-                    15.0,
-                    15.0,
-                    15.0,
-                    15.0,
-                    15.000000000000007,
-                    15.000000000000007,
-                    15.000000000000007,
-                    15.0,
-                    15.0,
-                    15.0,
-                    15.0,
-                ],
-                dtype=pl.Float64,
-            ),
-            pl.Series(
-                "flt2",
-                [
-                    14.999999046325684,
-                    15.0,
-                    14.999999046325684,
-                    15.0,
-                    15.0,
-                    15.0,
-                    15.0,
-                    15.0,
-                    15.0,
-                    15.0,
-                    15.0,
-                    15.0,
-                    15.0,
-                    15.0,
-                    15.0,
-                    15.0,
-                    15.0,
-                ],
-                dtype=pl.Float32,
-            ),
-        ]
-    )
-
-    assert diff_one.equals(expected_diff_one)
-
-    diff_two = df.mathx.diff(2, partition=ts.Grouper().by("catsb")).collect()
-
-    expected_diff_two = pl.DataFrame(
-        [
-            pl.Series(
-                "time",
-                [
-                    datetime(2024, 1, 14, 0, 0),
-                    datetime(2024, 1, 16, 0, 0),
-                    datetime(2024, 1, 18, 0, 0),
-                    datetime(2024, 1, 20, 0, 0),
-                    datetime(2024, 1, 22, 0, 0),
-                    datetime(2024, 1, 24, 0, 0),
-                    datetime(2024, 1, 26, 0, 0),
-                    datetime(2024, 1, 28, 0, 0),
-                    datetime(2024, 1, 30, 0, 0),
-                    datetime(2024, 2, 1, 0, 0),
-                    datetime(2024, 2, 3, 0, 0),
-                    datetime(2024, 2, 5, 0, 0),
-                    datetime(2024, 2, 7, 0, 0),
-                    datetime(2024, 2, 9, 0, 0),
-                ],
-                dtype=pl.Datetime(time_unit="us", time_zone=None),
-            ),
-            pl.Series(
-                "text",
-                [
-                    "stext 30",
-                    "stext 35",
-                    "stext 40",
-                    "stext 45",
-                    "stext 50",
-                    "stext 55",
-                    "stext 60",
-                    "stext 65",
-                    "stext 70",
-                    "stext 75",
-                    "stext 80",
-                    "stext 85",
-                    "stext 90",
-                    "stext 95",
-                ],
-                dtype=pl.String,
-            ),
-            pl.Series(
-                "catsa",
-                [
-                    "A30",
-                    "A35",
-                    "A40",
-                    "A45",
-                    "A50",
-                    "A55",
-                    "A60",
-                    "A65",
-                    "A70",
-                    "A75",
-                    "A80",
-                    "A85",
-                    "A90",
-                    "A95",
-                ],
-                dtype=pl.Categorical(ordering="physical"),
-            ),
-            pl.Series(
-                "catsb",
-                [
-                    "B0",
-                    "B2",
-                    "B1",
-                    "B0",
-                    "B2",
-                    "B1",
-                    "B0",
-                    "B2",
-                    "B1",
-                    "B0",
-                    "B2",
                     "B1",
                     "B0",
                     "B2",
@@ -437,44 +307,56 @@ def test_arithmetic_method(df):
             pl.Series(
                 "flt1",
                 [
-                    30.0,
-                    30.0,
-                    30.0,
-                    30.0,
-                    30.0,
-                    30.0,
-                    30.0,
-                    30.000000000000007,
-                    30.000000000000007,
-                    30.000000000000007,
-                    30.000000000000007,
-                    30.000000000000007,
-                    30.000000000000007,
-                    30.0,
+                    2.18,
+                    7.18,
+                    12.18,
+                    17.18,
+                    22.18,
+                    27.18,
+                    32.18,
+                    37.18,
+                    42.18,
+                    47.18,
+                    52.18,
+                    57.18,
+                    62.18,
+                    67.18,
+                    72.18,
+                    77.18,
+                    82.18,
+                    87.18,
+                    92.18,
+                    97.18,
                 ],
                 dtype=pl.Float64,
             ),
             pl.Series(
                 "flt2",
                 [
-                    30.0,
-                    30.0,
-                    30.0,
-                    30.0,
-                    30.0,
-                    30.0,
-                    30.0,
-                    30.0,
-                    30.0,
-                    30.0,
-                    30.0,
-                    30.0,
-                    30.0,
-                    30.0,
+                    1.3899999856948853,
+                    6.389999866485596,
+                    11.390000343322754,
+                    16.389999389648438,
+                    21.389999389648438,
+                    26.389999389648438,
+                    31.389999389648438,
+                    36.38999938964844,
+                    41.38999938964844,
+                    46.38999938964844,
+                    51.38999938964844,
+                    56.38999938964844,
+                    61.38999938964844,
+                    66.38999938964844,
+                    71.38999938964844,
+                    76.38999938964844,
+                    81.38999938964844,
+                    86.38999938964844,
+                    91.38999938964844,
+                    96.38999938964844,
                 ],
                 dtype=pl.Float32,
             ),
         ]
     )
 
-    assert diff_two.equals(expected_diff_two)
+    assert cum_sum.equals(expected_cum_sum)

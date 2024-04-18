@@ -2,12 +2,12 @@ from typing import Union, List
 
 import polars as pl
 
-from ..sf_helper import impl_categories
+from ..sf_helper import impl_apply_null_strategy
 from ..grouper import Grouper
 
 from ..types import (
     IntervalType,
-    FillStrategyType,
+    NullStrategyType,
     RetainValuesType,
     FrameType,
 )
@@ -18,8 +18,8 @@ def impl_align_to_time(
     time_axis: pl.Series,
     partition: Grouper,
     closed: IntervalType,
-    fill_strategy: FillStrategyType,
-    fill_sentinel: Union[float, int],
+    null_strategy: NullStrategyType,
+    null_sentinel_numeric: Union[float, int],
 ) -> FrameType:
     resampled = impl_resample_categories(df, time_axis, partition, closed)
     realigned = impl_align_values(
@@ -27,8 +27,8 @@ def impl_align_to_time(
         resampled,
         partition,
         retain_values="lhs",
-        fill_strategy=fill_strategy,
-        fill_sentinel=fill_sentinel,
+        null_strategy=null_strategy,
+        null_sentinel_numeric=null_sentinel_numeric,
     )
 
     return realigned
@@ -75,16 +75,20 @@ def impl_align_values(
     rhs: FrameType,
     partition: Grouper,
     retain_values: RetainValuesType,
-    fill_strategy: FillStrategyType,
-    fill_sentinel: Union[float, int],
+    null_strategy: NullStrategyType,
+    null_sentinel_numeric: Union[float, int],
 ) -> FrameType:
+    rhs_cat_cols = Grouper.categories(rhs, include_time=True)
+    rhs_grid = rhs.select(rhs_cat_cols)
+
     if retain_values == "lhs":
         # strip away rhs values
-        rhs = impl_categories(rhs, include_time=True)
+        rhs = rhs_grid
 
     if retain_values == "rhs":
         # strip away lhs values
-        lhs = impl_categories(lhs, include_time=True)
+        lhs_cat_cols = Grouper.categories(lhs, include_time=True)
+        lhs = lhs.select(lhs_cat_cols)
 
     assert isinstance(lhs, type(rhs)) and (
         isinstance(lhs, pl.LazyFrame) or isinstance(lhs, pl.DataFrame)
@@ -99,26 +103,10 @@ def impl_align_values(
         .unique(keep="first", maintain_order=True)
     )
 
-    if fill_strategy == "sentinel":
-        result = result.with_columns(pl.col(pl.NUMERIC_DTYPES).fill_null(fill_sentinel))
+    result = impl_apply_null_strategy(
+        result, null_strategy, null_sentinel_numeric, partition
+    )
 
-    elif fill_strategy == "forward":
-        result = result.with_columns(
-            pl.exclude("time").forward_fill().over(grouper_cols)
-        )
-
-    elif fill_strategy == "backward":
-        result = result.with_columns(
-            pl.exclude("time").backward_fill().over(grouper_cols)
-        )
-
-    elif fill_strategy == "none":
-        pass
-
-    else:
-        raise ValueError(f"Unexpected fill strategy: {fill_strategy}")
-
-    rhs_grid = impl_categories(rhs, include_time=True)
-    result = result.join(rhs_grid, on=rhs_grid.columns, how="inner")
+    result = result.join(rhs_grid, on=rhs_cat_cols, how="inner")
 
     return result
