@@ -4,7 +4,7 @@ import polars as pl
 from polars.type_aliases import JoinStrategy
 
 from .grouper import Grouper
-from .sf_helper import RESERVED_ALL_GRP, impl_join, prepare_result
+from .sf_helper import RESERVED_ALL_GRP, impl_join, prepare_result, impl_unique
 from .types import FrameType
 
 __NAMESPACE = "sf"
@@ -24,4 +24,8 @@ class SeriesFrame(Generic[FrameType]):
         how: JoinStrategy = "inner",
     ) -> FrameType:
         df = impl_join(self._df, other, grouper, how)
+        return prepare_result(df)
+
+    def unique(self, grouper: Grouper = Grouper().by_time_and_all()) -> FrameType:
+        df = impl_unique(self._df, grouper)
         return prepare_result(df)

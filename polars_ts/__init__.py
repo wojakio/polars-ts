@@ -8,7 +8,7 @@ import polars as pl
 from .display import *
 from .sf import *
 from .tsf import *
-from .loader import *
+from .io import *
 from .time import *
 from .dummy import *
 from .mathx import *

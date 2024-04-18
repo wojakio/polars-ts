@@ -51,3 +51,9 @@ def impl_join(
     df = lhs.join(rhs, on=grouper_cols, how=how)
 
     return df
+
+
+def impl_unique(df: FrameType, grouper: Grouper) -> FrameType:
+    grouper_cols = grouper.apply(df)
+    df = df.unique(subset=grouper_cols, maintain_order=True)
+    return df

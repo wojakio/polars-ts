@@ -13,7 +13,7 @@ def test_continuous_contract():
     market_end_date = datetime(2000, 1, 1, 23, 0, tzinfo=UTC)
 
     roll_config_filename = get_config_filename("roll_config.csv")
-    roll_config = pl.LazyFrame().loader.csv(roll_config_filename)
+    roll_config = pl.LazyFrame().io.read_csv(roll_config_filename)
 
     generic_symbols = generic_symbol_universe(
         roll_config, market_start_date, market_end_date
@@ -62,7 +62,9 @@ def test_continuous_contract():
 
     assert adjusted_prices_schema == expected_schema
 
-    assert adjusted_prices.shape == (10030, 5)
+    result = adjusted_prices.collect()
+
+    assert result.shape == (10030, 5)
 
     # replace that with a stable hash
-    assert adjusted_prices.hash_rows().sum() == 4148443207706655575
+    assert result.hash_rows().sum() == 4148443207706655575
