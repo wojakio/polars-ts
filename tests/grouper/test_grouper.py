@@ -66,13 +66,15 @@ def test_basic(df):
         "catsb",
     ]
 
-    with pytest.raises(ValueError, match="Empty Grouper Specification"):
+    with pytest.raises(ValueError, match="yielded no columns"):
         Grouper.omitting_time_and("catsa", "catsb").apply(df) == []
 
-    with pytest.raises(ValueError, match="Empty Grouper Specification"):
+    with pytest.raises(ValueError, match="yielded no columns"):
         Grouper.omitting("time", "catsa", "catsb").apply(df) == []
 
 
 def test_default(df):
-    with pytest.raises(ValueError, match="A Grouper spec has not been defined"):
+    with pytest.raises(
+        ValueError, match="Bad Grouper invocation. Undefined specification"
+    ):
         Grouper().apply(df)

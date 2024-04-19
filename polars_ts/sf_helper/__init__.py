@@ -34,6 +34,16 @@ def impl_apply_null_strategy(
     elif null_strategy == "backward":
         result = df.with_columns(pl.exclude("time").backward_fill().over(grouper_cols))
 
+    elif null_strategy == "interpolate_linear":
+        result = df.with_columns(
+            pl.exclude("time").interpolate(method="linear").over(grouper_cols)
+        )
+
+    elif null_strategy == "interpolate_nearest":
+        result = df.with_columns(
+            pl.exclude("time").interpolate(method="nearest").over(grouper_cols)
+        )
+
     elif null_strategy == "ignore":
         result = df
 

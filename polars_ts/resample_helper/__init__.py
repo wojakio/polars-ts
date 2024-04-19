@@ -1,5 +1,3 @@
-from typing import Union
-
 import polars as pl
 
 from ..sf_helper import impl_apply_null_strategy
@@ -10,6 +8,7 @@ from ..types import (
     NullStrategyType,
     RetainValuesType,
     FrameType,
+    SentinelNumeric,
 )
 
 
@@ -19,7 +18,7 @@ def impl_align_to_time(
     partition: Grouper,
     closed: IntervalType,
     null_strategy: NullStrategyType,
-    null_sentinel_numeric: Union[float, int],
+    null_sentinel_numeric: SentinelNumeric,
 ) -> FrameType:
     resampled = impl_resample_categories(df, time_axis, partition, closed)
     realigned = impl_align_values(
@@ -76,7 +75,7 @@ def impl_align_values(
     partition: Grouper,
     retain_values: RetainValuesType,
     null_strategy: NullStrategyType,
-    null_sentinel_numeric: Union[float, int],
+    null_sentinel_numeric: SentinelNumeric,
 ) -> FrameType:
     rhs_cat_cols = Grouper.categories(rhs, include_time=True)
     rhs_grid = rhs.select(rhs_cat_cols)
@@ -91,6 +90,7 @@ def impl_align_values(
         lhs = lhs.select(lhs_cat_cols)
 
     common_cols = Grouper().by_common_including_time().apply(lhs, rhs)
+
     result = (
         lhs.join(rhs, on=common_cols, how="outer_coalesce")
         .filter(pl.col("time").is_not_null())

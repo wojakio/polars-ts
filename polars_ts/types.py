@@ -10,5 +10,14 @@ CorrelationType = Literal[
     "additive", "multiplicative", "shift", "exponent", "average", "none"
 ]
 
-NullStrategyType = Literal["drop", "ignore", "sentinel_numeric", "forward", "backward"]
+NullStrategyType = Literal[
+    "drop",
+    "ignore",
+    "sentinel_numeric",
+    "forward",
+    "backward",
+    "interpolate_linear",
+    "interpolate_nearest",
+]
+
 SentinelNumeric = Union[float, int]

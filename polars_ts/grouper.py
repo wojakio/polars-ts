@@ -118,13 +118,17 @@ class Grouper:
 
     def apply(self, *dfs: FrameType) -> List[str]:
         if not self._has_defined_spec:
-            raise ValueError("A Grouper spec has not been defined.")
+            raise ValueError("Bad Grouper invocation. Undefined specification")
 
         if self._common and len(dfs) < 2:
-            raise ValueError("Require at least 2 dataframes when 'common' flag is set.")
+            raise ValueError(
+                f"Bad Grouper invocation. {str(self)}.apply(...) expects 2 arguments"
+            )
 
         if not self._common and len(dfs) != 1:
-            raise ValueError(f"Too many arguments passed to {str(self)}.apply(...)")
+            raise ValueError(
+                f"Bad Grouper invocation. {str(self)}.apply(...) expects 1 argument"
+            )
 
         if self._common:
             df = dfs[0]
@@ -154,7 +158,9 @@ class Grouper:
             result = sorted(cols)
 
         if len(result) == 0:
-            raise ValueError("Empty Grouper Specification")
+            raise ValueError(
+                f"Bad Grouper invocation. Result of {str(self)}.apply(...) yielded no columns"
+            )
 
         return result
 
