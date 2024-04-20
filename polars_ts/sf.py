@@ -4,8 +4,14 @@ import polars as pl
 from polars.type_aliases import JoinStrategy
 
 from .grouper import Grouper
-from .sf_helper import RESERVED_ALL_GRP, impl_join, prepare_result, impl_unique
-from .types import FrameType
+from .sf_helper import (
+    impl_fill_null,
+    impl_join,
+    impl_unique,
+    prepare_result,
+    RESERVED_ALL_GRP,
+)
+from .types import FrameType, NullStrategyType, SentinelNumeric
 
 __NAMESPACE = "sf"
 
@@ -28,4 +34,13 @@ class SeriesFrame(Generic[FrameType]):
 
     def unique(self, grouper: Grouper = Grouper().by_time_and_all()) -> FrameType:
         df = impl_unique(self._df, grouper)
+        return prepare_result(df)
+
+    def fill_null(
+        self,
+        null_strategy: NullStrategyType,
+        null_sentinel: SentinelNumeric,
+        partition: Grouper,
+    ) -> FrameType:
+        df = impl_fill_null(self._df, null_strategy, null_sentinel, partition)
         return prepare_result(df)

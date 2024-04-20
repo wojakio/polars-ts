@@ -3,7 +3,7 @@ from typing import Literal
 
 import polars as pl
 
-from ..sf_helper import impl_apply_null_strategy
+from ..sf_helper import impl_fill_null
 from ..grouper import Grouper
 
 from ..types import FrameType, NullStrategyType, SentinelNumeric
@@ -15,15 +15,13 @@ def impl_diff(
     method: Literal["arithmetic", "fractional", "geometric"],
     partition: Grouper,
     null_strategy: NullStrategyType,
-    null_sentinel_numeric: SentinelNumeric,
+    null_sentinel: SentinelNumeric,
 ) -> FrameType:
     grouper_cols = partition.apply(df)
     numeric_cols = partition.numerics(df)
 
     result = df.with_columns(pl.col(numeric_cols).diff(k).over(grouper_cols))
-    result = impl_apply_null_strategy(
-        result, null_strategy, null_sentinel_numeric, partition
-    )
+    result = impl_fill_null(result, null_strategy, null_sentinel, partition)
 
     return result
 
@@ -41,16 +39,14 @@ def impl_shift(
     df: FrameType,
     k: int,
     null_strategy: NullStrategyType,
-    null_sentinel_numeric: SentinelNumeric,
+    null_sentinel: SentinelNumeric,
     partition: Grouper,
 ) -> FrameType:
     grouper_cols = partition.apply(df)
     numeric_cols = partition.numerics(df)
 
     result = df.with_columns(pl.col(numeric_cols).shift(k).over(grouper_cols))
-    result = impl_apply_null_strategy(
-        result, null_strategy, null_sentinel_numeric, partition
-    )
+    result = impl_fill_null(result, null_strategy, null_sentinel, partition)
 
     return result
 

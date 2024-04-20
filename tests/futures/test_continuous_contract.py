@@ -36,9 +36,9 @@ def test_continuous_contract():
     )
 
     instrument_prices = security_dates.dummymkt.fetch_instrument_prices(
-        "fut_first_trade_dt",
-        pl.min_horizontal("expiry_date", pl.lit(market_end_date.date())),
-        remove_weekends=False,
+        market_start_date.date(),
+        market_end_date.date(),
+        remove_weekends=True,
     )
 
     adjusted_prices = (
@@ -64,7 +64,7 @@ def test_continuous_contract():
 
     result = adjusted_prices.collect()
 
-    assert result.shape == (10030, 5)
+    assert result.shape == (7830, 5)
 
     # replace that with a stable hash
-    assert result.hash_rows().sum() == 4148443207706655575
+    assert result.hash_rows().sum() == 11359005816526693312

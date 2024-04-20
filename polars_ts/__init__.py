@@ -18,6 +18,8 @@ from .calendar import *
 from .futures import *
 from .dummymkt import *
 
+from .grouper import Grouper  # noqa
+
 pl.enable_string_cache()
 
 

@@ -1,8 +1,7 @@
-from typing import Union
 import polars as pl
 from polars.type_aliases import JoinStrategy
 
-from ..types import FrameType, NullStrategyType
+from ..types import FrameType, NullStrategyType, SentinelNumeric
 from ..grouper import Grouper
 
 RESERVED_COL_PREFIX = "##@_"
@@ -15,17 +14,17 @@ def prepare_result(df: FrameType) -> FrameType:
     return df.select(pl.exclude(RESERVED_COL_REGEX))
 
 
-def impl_apply_null_strategy(
+def impl_fill_null(
     df: FrameType,
     null_strategy: NullStrategyType,
-    null_sentinel_numeric: Union[float, int],
+    null_sentinel: SentinelNumeric,
     partition: Grouper,
 ) -> FrameType:
     grouper_cols = partition.apply(df)
 
-    if null_strategy == "sentinel_numeric":
+    if null_strategy == "sentinel":
         result = df.with_columns(
-            pl.col(pl.NUMERIC_DTYPES).fill_null(null_sentinel_numeric)
+            pl.col(pl.NUMERIC_DTYPES).fill_null(null_sentinel)
         )
 
     elif null_strategy == "forward":

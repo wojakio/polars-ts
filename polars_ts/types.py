@@ -13,7 +13,7 @@ CorrelationType = Literal[
 NullStrategyType = Literal[
     "drop",
     "ignore",
-    "sentinel_numeric",
+    "sentinel",
     "forward",
     "backward",
     "interpolate_linear",

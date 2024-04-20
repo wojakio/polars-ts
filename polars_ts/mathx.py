@@ -25,10 +25,10 @@ class MathxFrame(SeriesFrame, Generic[FrameType]):
         method: Literal["arithmetic", "fractional", "geometric"] = "arithmetic",
         partition: Grouper = Grouper().by_all(),
         null_strategy: NullStrategyType = "drop",
-        null_sentinel_numeric: SentinelNumeric = 0.0,
+        null_sentinel: SentinelNumeric = 0.0,
     ) -> FrameType:
         df = impl_diff(
-            self._df, k, method, partition, null_strategy, null_sentinel_numeric
+            self._df, k, method, partition, null_strategy, null_sentinel
         )
         return prepare_result(df)
 
@@ -41,10 +41,10 @@ class MathxFrame(SeriesFrame, Generic[FrameType]):
         self,
         k: int = 1,
         null_strategy: NullStrategyType = "ignore",
-        null_sentinel_numeric: SentinelNumeric = 0.0,
+        null_sentinel: SentinelNumeric = 0.0,
         partition: Grouper = Grouper().by_all(),
     ) -> FrameType:
-        df = impl_shift(self._df, k, null_strategy, null_sentinel_numeric, partition)
+        df = impl_shift(self._df, k, null_strategy, null_sentinel, partition)
         return prepare_result(df)
 
     def ewm_mean(
