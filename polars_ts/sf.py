@@ -55,9 +55,8 @@ class SeriesFrame(Generic[FrameType]):
         how: JoinStrategy,
         flatten: bool = True,
         then_unique: bool = True,
-        then_sort: bool = True
+        then_sort: bool = True,
     ) -> FrameType:
-
         left_on = parse_into_expr(left_on)
         right_on = parse_into_expr(right_on)
 
@@ -69,7 +68,7 @@ class SeriesFrame(Generic[FrameType]):
             how=how,
             flatten=flatten,
             then_unique=then_unique,
-            then_sort=then_sort
+            then_sort=then_sort,
         )
 
         return prepare_result(df)

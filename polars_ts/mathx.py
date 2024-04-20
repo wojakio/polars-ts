@@ -27,9 +27,7 @@ class MathxFrame(SeriesFrame, Generic[FrameType]):
         null_strategy: NullStrategyType = "drop",
         null_sentinel: SentinelNumeric = 0.0,
     ) -> FrameType:
-        df = impl_diff(
-            self._df, k, method, partition, null_strategy, null_sentinel
-        )
+        df = impl_diff(self._df, k, method, partition, null_strategy, null_sentinel)
         return prepare_result(df)
 
     def cum_sum(self, partition: Grouper = Grouper().by_all()) -> FrameType:

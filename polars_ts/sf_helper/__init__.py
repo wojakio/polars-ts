@@ -10,6 +10,7 @@ RESERVED_ALL_GRP = f"{RESERVED_COL_PREFIX}_GRP_ALL"
 RESERVED_ROW_IDX = f"{RESERVED_COL_PREFIX}_INDEX"
 RESERVED_DELIMITER = "##@"
 
+
 def prepare_result(df: FrameType) -> FrameType:
     return df.select(pl.exclude(RESERVED_COL_REGEX))
 
@@ -23,9 +24,7 @@ def impl_fill_null(
     grouper_cols = partition.apply(df)
 
     if null_strategy == "sentinel":
-        result = df.with_columns(
-            pl.col(pl.NUMERIC_DTYPES).fill_null(null_sentinel)
-        )
+        result = df.with_columns(pl.col(pl.NUMERIC_DTYPES).fill_null(null_sentinel))
 
     elif null_strategy == "forward":
         result = df.with_columns(pl.exclude("time").forward_fill().over(grouper_cols))
@@ -67,16 +66,19 @@ def impl_unique(df: FrameType, grouper: Grouper) -> FrameType:
     df = df.unique(subset=grouper_cols, maintain_order=True)
     return df
 
+
 def _add_unique_row_index(df: FrameType) -> FrameType:
     if RESERVED_ROW_IDX not in df.columns:
         df = df.with_row_index(name=RESERVED_ROW_IDX)
 
     return df
 
+
 def _name_unique_over(name: str, *df: FrameType) -> str:
     # orig_columns = df.columns
     unique_name = f"{RESERVED_COL_PREFIX}{name}"
     return unique_name
+
 
 def impl_join_on_list_items(
     lhs: FrameType,
@@ -86,19 +88,15 @@ def impl_join_on_list_items(
     how: JoinStrategy,
     flatten: bool,
     then_unique: bool,
-    then_sort: bool
+    then_sort: bool,
 ) -> FrameType:
-
     # left_on column has type: pl.List(some-dtype)
     # right_on column as type: some-dtype
 
     join_key_name = _name_unique_over("join_key", lhs)
-    _make_join_key = lambda xs: (
-        xs
-        .list.eval(pl.element().to_physical().hash())
-        .list.sort()
-        .list.sum()
-    )
+
+    def _make_join_key(xs: pl.Expr) -> pl.Expr:
+        return xs.list.eval(pl.element().to_physical().hash()).list.sort().list.sum()
 
     result_expr = pl.exclude(left_on.meta.output_name(), right_on.meta.output_name())
 
@@ -113,25 +111,17 @@ def impl_join_on_list_items(
 
     # build new rhs => construct join-keys present in lhs
     aggregated_rhs = (
-        lhs
-        .pipe(_add_unique_row_index)
+        lhs.pipe(_add_unique_row_index)
         .select(RESERVED_ROW_IDX, left_on)
         .join(rhs, how="cross")
         .filter(right_on.is_in(left_on))
         .group_by(RESERVED_ROW_IDX)
-        .agg(
-            _make_join_key(left_on.first()).alias(join_key_name),
-            result_expr
-        )
-    )    
+        .agg(_make_join_key(left_on.first()).alias(join_key_name), result_expr)
+    )
 
     df = (
-        lhs
-        .with_columns(_make_join_key(left_on).alias(join_key_name))
-        .join(
-            aggregated_rhs,
-            on=join_key_name,
-            how=how
+        lhs.with_columns(_make_join_key(left_on).alias(join_key_name)).join(
+            aggregated_rhs, on=join_key_name, how=how
         )
         # .drop(join_key_name)
     )
