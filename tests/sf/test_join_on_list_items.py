@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 import polars as pl
 import pytest
+import polars_ts  # noqa
 
 
 @pytest.fixture
@@ -22,7 +23,20 @@ def df_map() -> pl.LazyFrame:
 
 def test_int_key(df_map):
     df = pl.LazyFrame(
-        {"mylist": [[1], [2, 3], [], None, [2, 3, 6], [2, 2, 2], [9], [1, 9], [2, 9]]}
+        {
+            "mylist": [
+                [1],
+                [1],
+                [2, 3],
+                [],
+                None,
+                [2, 3, 6],
+                [2, 2, 2],
+                [9],
+                [1, 9],
+                [2, 9],
+            ]
+        }
     )
 
     result = df.sf.join_on_list_items(
@@ -33,12 +47,13 @@ def test_int_key(df_map):
         [
             pl.Series(
                 "mylist",
-                [[1], [2, 3], [], None, [2, 3, 6], [2, 2, 2], [9], [1, 9], [2, 9]],
+                [[1], [1], [2, 3], [], None, [2, 3, 6], [2, 2, 2], [9], [1, 9], [2, 9]],
                 dtype=pl.List(pl.Int64),
             ),
             pl.Series(
                 "date_key",
                 [
+                    [datetime(2000, 1, 1)],
                     [datetime(2000, 1, 1)],
                     [datetime(2000, 1, 2), datetime(2000, 1, 3)],
                     None,
@@ -55,6 +70,7 @@ def test_int_key(df_map):
                 "str_key",
                 [
                     ["z"],
+                    ["z"],
                     ["x", "y"],
                     None,
                     None,
@@ -70,6 +86,7 @@ def test_int_key(df_map):
                 "B",
                 [
                     [None],
+                    [None],
                     [1, 2],
                     None,
                     None,
@@ -83,6 +100,7 @@ def test_int_key(df_map):
             ),
         ]
     )
+
     assert result.equals(expected_result)
 
 

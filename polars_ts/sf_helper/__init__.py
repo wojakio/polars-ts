@@ -109,7 +109,7 @@ def impl_join_on_list_items(
         if then_sort:
             result_expr = result_expr.sort()
 
-    # build new rhs => construct join-keys present in lhs
+    # build new rhs => construct unique join-keys present in lhs
     aggregated_rhs = (
         lhs.pipe(_add_unique_row_index)
         .select(RESERVED_ROW_IDX, left_on)
@@ -117,6 +117,9 @@ def impl_join_on_list_items(
         .filter(right_on.is_in(left_on))
         .group_by(RESERVED_ROW_IDX)
         .agg(_make_join_key(left_on.first()).alias(join_key_name), result_expr)
+        .drop(RESERVED_ROW_IDX)
+        .sort(join_key_name)
+        .unique(subset=join_key_name, maintain_order=True)
     )
 
     df = (
