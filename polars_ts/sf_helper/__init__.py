@@ -8,7 +8,7 @@ RESERVED_COL_PREFIX = "##@_"
 RESERVED_COL_REGEX = "^##@_.*$"
 RESERVED_ALL_GRP = f"{RESERVED_COL_PREFIX}_GRP_ALL"
 RESERVED_ROW_IDX = f"{RESERVED_COL_PREFIX}_INDEX"
-
+RESERVED_DELIMITER = "##@"
 
 def prepare_result(df: FrameType) -> FrameType:
     return df.select(pl.exclude(RESERVED_COL_REGEX))
@@ -65,4 +65,75 @@ def impl_join(
 def impl_unique(df: FrameType, grouper: Grouper) -> FrameType:
     grouper_cols = grouper.apply(df)
     df = df.unique(subset=grouper_cols, maintain_order=True)
+    return df
+
+def _add_unique_row_index(df: FrameType) -> FrameType:
+    if RESERVED_ROW_IDX not in df.columns:
+        df = df.with_row_index(name=RESERVED_ROW_IDX)
+
+    return df
+
+def _name_unique_over(name: str, *df: FrameType) -> str:
+    # orig_columns = df.columns
+    unique_name = f"{RESERVED_COL_PREFIX}{name}"
+    return unique_name
+
+def impl_join_on_list_items(
+    lhs: FrameType,
+    rhs: FrameType,
+    left_on: pl.Expr,
+    right_on: pl.Expr,
+    how: JoinStrategy,
+    flatten: bool,
+    then_unique: bool,
+    then_sort: bool
+) -> FrameType:
+
+    # left_on column has type: pl.List(some-dtype)
+    # right_on column as type: some-dtype
+
+    join_key_name = _name_unique_over("join_key", lhs)
+    _make_join_key = lambda xs: (
+        xs
+        .list.eval(pl.element().to_physical().hash())
+        .list.sort()
+        .list.sum()
+    )
+
+    result_expr = pl.exclude(left_on.meta.output_name(), right_on.meta.output_name())
+
+    if flatten:
+        result_expr = result_expr.explode()
+
+        if then_unique:
+            result_expr = result_expr.unique()
+
+        if then_sort:
+            result_expr = result_expr.sort()
+
+    # build new rhs => construct join-keys present in lhs
+    aggregated_rhs = (
+        lhs
+        .pipe(_add_unique_row_index)
+        .select(RESERVED_ROW_IDX, left_on)
+        .join(rhs, how="cross")
+        .filter(right_on.is_in(left_on))
+        .group_by(RESERVED_ROW_IDX)
+        .agg(
+            _make_join_key(left_on.first()).alias(join_key_name),
+            result_expr
+        )
+    )    
+
+    df = (
+        lhs
+        .with_columns(_make_join_key(left_on).alias(join_key_name))
+        .join(
+            aggregated_rhs,
+            on=join_key_name,
+            how=how
+        )
+        # .drop(join_key_name)
+    )
+
     return df

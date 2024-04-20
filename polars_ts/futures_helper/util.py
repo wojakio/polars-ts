@@ -9,7 +9,7 @@ from ..utils import parse_into_expr
 def month_to_imm_dict(invert: bool = False) -> Dict[Union[str, int], Union[str, int]]:
     result_cols = ["month_idx", "imm_code"]
     df = (
-        pl.DataFrame({"imm_code": "FGHJKMNQUVXZ"})
+        pl.from_dict({"imm_code": "FGHJKMNQUVXZ"})
         .select(
             pl.col("imm_code").str.extract_all("[F-Z]").explode().cast(pl.Categorical)
         )
