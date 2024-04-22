@@ -42,6 +42,15 @@ def impl_fill_null(
             pl.exclude("time").interpolate(method="nearest").over(grouper_cols)
         )
 
+    elif null_strategy == "min":
+        result = df.with_columns(pl.exclude("time").min().over(grouper_cols))
+
+    elif null_strategy == "max":
+        result = df.with_columns(pl.exclude("time").max().over(grouper_cols))
+
+    elif null_strategy == "mean":
+        result = df.with_columns(pl.exclude("time").mean().over(grouper_cols))
+
     elif null_strategy == "ignore":
         result = df
 

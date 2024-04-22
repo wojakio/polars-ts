@@ -18,6 +18,9 @@ NullStrategyType = Literal[
     "backward",
     "interpolate_linear",
     "interpolate_nearest",
+    "min",
+    "max",
+    "mean",
 ]
 
 SentinelNumeric = Union[float, int]
