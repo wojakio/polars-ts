@@ -25,7 +25,9 @@ def guess_security_meta(
         .select(
             "asset",
             "instrument_id",
-            fut_first_trade_dt=_guess_fut_first_trade_dt(pl.col("expiry_date")),
+            fut_first_trade_dt=_guess_fut_first_trade_dt(
+                pl.col("expiry_date"), pl.col("approximate_contract_lifespan")
+            ),
             last_tradeable_dt="expiry_date",
             fut_notice_first="expiry_date",
         )
@@ -35,17 +37,14 @@ def guess_security_meta(
     return df
 
 
-def _guess_fut_first_trade_dt(
-    expiry_date: pl.Expr, min_trade_days: str = "-2y", buffer_days: str = "-30d"
-) -> pl.Expr:
+def _guess_fut_first_trade_dt(expiry_date: pl.Expr, trade_lifespan: pl.Expr) -> pl.Expr:
     first_trade_dt = pl.min_horizontal(
         (
             expiry_date.dt.month_start()
             .dt.offset_by(pl.col("approximate_expiry_offset").cast(pl.String))
             .dt.offset_by(pl.col("roll_offset").cast(pl.String))
-            .dt.offset_by(buffer_days)
         ),
-        (expiry_date.dt.offset_by(min_trade_days)),
+        (expiry_date.dt.offset_by(pl.concat_str(pl.lit("-"), trade_lifespan))),
     )
 
     return first_trade_dt
