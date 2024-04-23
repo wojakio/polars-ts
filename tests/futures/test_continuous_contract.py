@@ -1,6 +1,6 @@
 from datetime import datetime, UTC
-import polars as pl
 
+import polars as pl
 import polars_ts  # noqa
 
 from ..config import get_config_filename
@@ -41,6 +41,14 @@ def test_continuous_contract():
         remove_weekends=True,
     )
 
+    empty_adjusted_prices = (
+        pl.LazyFrame()
+        .future.prepare_unadjusted_for_stitching(
+            roll_calendar, instrument_prices.clear()
+        )
+        .future.stitch_panama_backwards()
+    )
+
     adjusted_prices = (
         pl.LazyFrame()
         .future.prepare_unadjusted_for_stitching(roll_calendar, instrument_prices)
@@ -63,8 +71,10 @@ def test_continuous_contract():
     assert adjusted_prices_schema == expected_schema
 
     result = adjusted_prices.collect()
-
     assert result.shape == (7830, 5)
 
     # replace that with a stable hash
-    assert 10419815321858525759 == result.hash_rows().sum()
+    assert 14965759824384381517 == result.hash_rows().sum()
+
+    empty_result = empty_adjusted_prices.collect()
+    assert empty_result.is_empty()

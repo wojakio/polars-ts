@@ -1,4 +1,5 @@
 {
+    "version": "0.2.0",
     "configurations": [
         {
             "name": "Debug Rust/Python",
@@ -18,7 +19,7 @@
         },
         {
             "name": "Rust LLDB",
-            "pid": "70534",
+            "pid": "16185",
             "type": "lldb",
             "request": "attach",
             "program": "${workspaceFolder}/.venv/bin/python",

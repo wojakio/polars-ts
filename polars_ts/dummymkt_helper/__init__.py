@@ -39,9 +39,6 @@ def _roll_back_missing_stitch_points(
 
     missing_prices = df.filter(has_missing_price)
 
-    if len(missing_prices.lazy().fetch(1)) == 0:
-        return df
-
     candidate_roll_data = (
         missing_prices.select(
             "asset",
@@ -84,9 +81,12 @@ def _roll_back_missing_stitch_points(
         .last()
     )
 
-    result = df.update(updated_rolls)
-
-    print("Updated some roll-dates in roll-calendar.")
+    result = df.update(
+        updated_rolls,
+        on=["asset", "near_contract", "far_contract", "carry_contract"],
+        how="left",
+        include_nulls=True,
+    )
 
     return result
 
