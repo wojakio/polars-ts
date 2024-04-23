@@ -67,4 +67,4 @@ def test_continuous_contract():
     assert result.shape == (7830, 5)
 
     # replace that with a stable hash
-    assert result.hash_rows().sum() == 11359005816526693312
+    assert 10419815321858525759 == result.hash_rows().sum()

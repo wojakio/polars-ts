@@ -186,7 +186,6 @@ def create_roll_calendar_helper(
         .select(
             "asset",
             "instrument_id",
-            "expiry_date",
             has_instruments=pl.col("expiry_date").is_not_null(),
             roll_date=(
                 pl.col("expiry_date").dt.offset_by(
@@ -206,6 +205,7 @@ def create_roll_calendar_helper(
         .join(
             asset_contracts(roll_config), on=["asset", "hold_near_month"], how="inner"
         )
+        .sort("asset", "roll_date")
         .with_columns(
             pl.col("hold_near_month", "hold_far_month_offset", "carry_month_offset")
             .backward_fill()
@@ -213,7 +213,9 @@ def create_roll_calendar_helper(
         )
         .with_columns(
             near_contract_dt=pl.date(
-                pl.col("expiry_date").dt.year(), pl.col("hold_near_month"), 1
+                pl.col("instrument_id").struct.field("year"),
+                pl.col("hold_near_month"),
+                1,
             )
         )
         .with_columns(
@@ -232,7 +234,6 @@ def create_roll_calendar_helper(
             carry_contract=make_generic_contract("carry_contract_dt"),
         )
         .select(result_schema)
-        .sort("asset", "roll_date")
         # TODO: change this to drop nulls at end of table
         .drop_nulls()
     )

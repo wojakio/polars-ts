@@ -29,8 +29,72 @@ def impl_fetch_instrument_prices(
     return result
 
 
+def _roll_back_missing_stitch_points(
+    df: FrameType, prices: FrameType, lookback_interval: str
+) -> FrameType:
+    has_missing_price = pl.any_horizontal(
+        pl.col("near_price").is_null(),
+        pl.col("far_price").is_null(),
+    )
+
+    missing_prices = df.filter(has_missing_price)
+
+    if len(missing_prices.lazy().fetch(1)) == 0:
+        return df
+
+    candidate_roll_data = (
+        missing_prices.select(
+            "asset",
+            "near_contract",
+            "far_contract",
+            "carry_contract",
+            start_date=pl.col("roll_date").dt.offset_by(f"-{lookback_interval}"),
+            end_date="roll_date",
+        )
+        .with_columns(roll_date=pl.date_ranges("start_date", "end_date", "1d"))
+        .drop("start_date", "end_date")
+        .explode("roll_date")
+        .join(
+            prices.rename({"instrument_id": "near_contract", "value": "near_price"}),
+            on=["roll_date", "asset", "near_contract"],
+            how="left",
+        )
+        .join(
+            prices.rename({"instrument_id": "far_contract", "value": "far_price"}),
+            on=["roll_date", "asset", "far_contract"],
+            how="left",
+        )
+        .join(
+            prices.rename({"instrument_id": "carry_contract", "value": "carry_price"}),
+            on=["roll_date", "asset", "carry_contract"],
+            how="left",
+        )
+        .sort("asset", "roll_date")
+    )
+
+    updated_rolls = (
+        candidate_roll_data.filter(has_missing_price.not_())
+        .group_by(
+            "asset",
+            "near_contract",
+            "far_contract",
+            "carry_contract",
+            maintain_order=True,
+        )
+        .last()
+    )
+
+    result = df.update(updated_rolls)
+
+    print("Updated some roll-dates in roll-calendar.")
+
+    return result
+
+
 def impl_fetch_roll_calendar_prices(
-    roll_calendar: FrameType, instrument_prices: FrameType
+    roll_calendar: FrameType,
+    instrument_prices: FrameType,
+    stitch_lookback_interval: str,
 ) -> FrameType:
     prices = instrument_prices.rename({"time": "roll_date"})
 
@@ -51,5 +115,7 @@ def impl_fetch_roll_calendar_prices(
             how="left",
         )
     )
+
+    df = _roll_back_missing_stitch_points(df, prices, stitch_lookback_interval)
 
     return df

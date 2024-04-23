@@ -32,7 +32,12 @@ class DummyMktFrame(SeriesFrame, Generic[FrameType]):
         return prepare_result(df)
 
     def fetch_roll_calendar_prices(
-        self, roll_calendar: FrameType, instrument_prices: FrameType
+        self,
+        roll_calendar: FrameType,
+        instrument_prices: FrameType,
+        stitch_lookback_interval: str = "15d",
     ) -> FrameType:
-        df = impl_fetch_roll_calendar_prices(roll_calendar, instrument_prices)
+        df = impl_fetch_roll_calendar_prices(
+            roll_calendar, instrument_prices, stitch_lookback_interval
+        )
         return prepare_result(df)
