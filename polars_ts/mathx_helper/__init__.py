@@ -20,7 +20,16 @@ def impl_diff(
     grouper_cols = partition.apply(df)
     numeric_cols = partition.numerics(df)
 
-    result = df.with_columns(pl.col(numeric_cols).diff(k).over(grouper_cols))
+    if method == "arithmetic":
+        result_expr = pl.col(numeric_cols).diff(k).over(grouper_cols)
+    elif method == "fractional":
+        result_expr = pl.col(numeric_cols).pct_change(k).over(grouper_cols)
+    elif method == "geometric":
+        result_expr = (pl.col(numeric_cols) / (pl.col(numeric_cols).shift(k))  - 1).over(grouper_cols)
+    else:
+        raise ValueError(f"Unexpected diff method: {method}")
+
+    result = df.with_columns(result_expr)
     result = impl_fill_null(result, null_strategy, null_sentinel, partition)
 
     return result

@@ -53,27 +53,38 @@ def impl_prepare_unadjusted_for_stitching(
     return result
 
 
-def impl_stitch_panama_backwards(df: FrameType) -> FrameType:
-    result = (
-        df.with_columns(
+def impl_stitch_panama_backwards(unadj_df: FrameType) -> FrameType:
+    srs = (
+        unadj_df.with_columns(
             roll_adj=(
-                pl.when(pl.col("next_value").is_not_null())
-                .then(pl.col("next_value") - pl.col("value"))
-                .otherwise(0.0)
+                pl.when(pl.col("next_value").is_null())
+                .then(0.0)
+                .otherwise(pl.col("next_value") - pl.col("value"))
             )
         )
         .with_columns(
-            cum_adj=(pl.col("roll_adj").reverse().cum_sum().reverse().over("asset"))
+            cum_adj_backward=(pl.col("roll_adj").reverse().cum_sum().reverse().over("asset")),
         )
-        .with_columns(adj=pl.col("value") + pl.col("cum_adj"))
-        # cleanup
-        .select(
-            "time",
-            "asset",
-            "instrument_id",
-            unadjusted="value",
-            panama_backwards="adj",
-        )
+        .with_columns(adj=pl.col("value") + pl.col("cum_adj_backward"))
+    )
+
+    result = pl.concat(
+        [
+            srs.select(
+                "time",
+                pl.lit("none").cast(pl.Categorical).alias("stitching"),
+                "asset",
+                "instrument_id",
+                "value",
+            ),
+            srs.select(
+                "time",
+                pl.lit("panama_backward").cast(pl.Categorical).alias("stitching"),
+                "asset",
+                "instrument_id",
+                value="adj",
+            ),
+        ]
     )
 
     return result

@@ -59,22 +59,27 @@ def test_continuous_contract():
 
     expected_schema = [
         ("time", pl.Date),
+        ("stitching", pl.Categorical(ordering="physical")),
         ("asset", pl.Categorical(ordering="physical")),
         (
             "instrument_id",
             pl.Struct({"tenor": pl.Categorical(ordering="physical"), "year": pl.Int32}),
         ),
-        ("unadjusted", pl.Float64),
-        ("panama_backwards", pl.Float64),
+        ("value", pl.Float64),
     ]
 
     assert adjusted_prices_schema == expected_schema
 
     result = adjusted_prices.collect()
-    assert result.shape == (7830, 5)
+    # result.write_parquet(get_data_filename("futures", "stitched_series.parquet"))
+    # expected_result = pl.read_parquet(get_data_filename("futures", "stitched_series.parquet"))
+    # assert result.equals(expected_result)
+
+    assert result.shape == (15660, 5)
 
     # replace that with a stable hash
-    assert 14965759824384381517 == result.hash_rows().sum()
+    assert 7168100563240324100 == result.hash_rows().sum()
 
     empty_result = empty_adjusted_prices.collect()
+    assert list(empty_result.schema.items()) == expected_schema
     assert empty_result.is_empty()
