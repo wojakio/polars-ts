@@ -63,7 +63,9 @@ def impl_stitch_panama_backwards(unadj_df: FrameType) -> FrameType:
             )
         )
         .with_columns(
-            cum_adj_backward=(pl.col("roll_adj").reverse().cum_sum().reverse().over("asset")),
+            cum_adj_backward=(
+                pl.col("roll_adj").reverse().cum_sum().reverse().over("asset")
+            ),
         )
         .with_columns(adj=pl.col("value") + pl.col("cum_adj_backward"))
     )

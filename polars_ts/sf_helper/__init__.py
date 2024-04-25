@@ -83,7 +83,7 @@ def _add_unique_row_index(df: FrameType) -> FrameType:
     return df
 
 
-def _name_unique_over(name: str, *df: FrameType) -> str:
+def column_name_unique_over(name: str, *df: FrameType) -> str:
     # orig_columns = df.columns
     unique_name = f"{RESERVED_COL_PREFIX}{name}"
     return unique_name
@@ -102,7 +102,7 @@ def impl_join_on_list_items(
     # left_on column has type: pl.List(some-dtype)
     # right_on column as type: some-dtype
 
-    join_key_name = _name_unique_over("join_key", lhs)
+    join_key_name = column_name_unique_over("join_key", lhs)
 
     def _make_join_key(xs: pl.Expr) -> pl.Expr:
         return xs.list.eval(pl.element().to_physical().hash()).list.sort().list.sum()

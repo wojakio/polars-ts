@@ -1,28 +1,32 @@
 import polars as pl
 
 from ..types import FrameType
+from ..sf_helper import column_name_unique_over
+
 
 def impl_construct_closure(
     conv_df: FrameType,
     max_iterations: int,
 ) -> FrameType:
+    # close under identity, inverse and transitive
+    cf = pl.col("conversion_factor")
 
-    # construct identity, inverse and transitive
-    value = pl.col("value")
-
-    inverses_df = (
-        conv_df
-        .with_columns(base="target", target="base", value=1/value)
+    inverses_df = conv_df.with_columns(
+        base="target", target="base", conversion_factor=1 / cf
     )
 
-    known_units = pl.concat([conv_df.select("base"), conv_df.select(base="target")]).unique()
+    known_units = pl.concat(
+        [conv_df.select("base"), conv_df.select(base="target")]
+    ).unique()
 
     # unusual construction to align schema of identities_df with conv_df
     identities_df = (
-        conv_df
-        .clear()
+        conv_df.clear()
         .join(known_units, on="base", how="outer_coalesce")
-        .with_columns(target="base", value=1.0,)
+        .with_columns(
+            target="base",
+            conversion_factor=1.0,
+        )
     )
 
     partial = (
@@ -30,23 +34,23 @@ def impl_construct_closure(
         .with_columns(
             pl.col("base").cast(pl.String).str.to_lowercase(),
             pl.col("target").cast(pl.String).str.to_lowercase(),
-            pl.exclude("base", "target", "value").forward_fill(),
+            pl.exclude("base", "target", "conversion_factor").forward_fill(),
         )
+        .lazy()
         .collect()
     )
 
     added_rows = len(partial)
-    while (added_rows > 0) and (max_iterations != 0) :
+    while (added_rows > 0) and (max_iterations != 0):
         old_rows = len(partial)
         max_iterations = max_iterations - 1
 
         partial = (
-            partial
-            .join(partial, left_on="target", right_on="base", how="inner")
+            partial.join(partial, left_on="target", right_on="base", how="inner")
             .select(
                 "base",
                 target="target_right",
-                value=value * pl.col("value_right")
+                conversion_factor=cf * pl.col("conversion_factor_right"),
             )
             .unique(subset=["base", "target"], keep="first")
             .sort("base", "target")
@@ -54,13 +58,118 @@ def impl_construct_closure(
 
         added_rows = len(partial) - old_rows
 
-    result = partial.with_columns(pl.col(pl.String).cast(pl.Categorical))
+    partial = partial.with_columns(pl.col(pl.String).cast(pl.Categorical))
 
-    if isinstance(conv_df, pl.LazyFrame):
-        result = result.lazy()
+    result: FrameType = (
+        partial.lazy()
+        if isinstance(conv_df, pl.LazyFrame)
+        else partial.lazy().collect()
+    )
 
     return result
 
+
+def _split_multi_unit(u: pl.Expr, field_name: str) -> pl.Expr:
+    return (
+        u.cast(pl.String)
+        .str.split_exact("/", 1)
+        .struct.rename_fields([f"{field_name}_numerator", f"{field_name}_denominator"])
+        .alias(field_name)
+    )
+
+
+def _impl_convert_multi_dim(
+    df: FrameType,
+    target_unit: pl.Expr,
+    conversion_matrix: FrameType,
+    value: pl.Expr,
+    value_unit: pl.Expr,
+) -> FrameType:
+    value_unit_name = value_unit.meta.output_name()
+    target_unit_name = target_unit.meta.output_name()
+
+    value_unit_prefix = column_name_unique_over(value_unit_name, df)
+    target_unit_prefix = column_name_unique_over(target_unit_name, df)
+
+    value_unit_list = _split_multi_unit(value_unit, value_unit_prefix)
+    target_unit_list = _split_multi_unit(target_unit, target_unit_prefix)
+
+    result = (
+        df.with_columns(
+            target_unit_list,
+            value_unit_list,
+        )
+        .unnest(target_unit_prefix, value_unit_prefix)
+        .with_columns(
+            pl.col(f"^{target_unit_prefix}.*$", f"^{value_unit_prefix}.*$").cast(
+                pl.Categorical
+            )
+        )
+        .pipe(
+            _impl_convert_single_dim,
+            pl.col(f"{target_unit_prefix}_numerator"),
+            conversion_matrix,
+            value,
+            value_unit=pl.col(f"{value_unit_prefix}_numerator"),
+            invert=False,
+        )
+        .pipe(
+            _impl_convert_single_dim,
+            pl.col(f"{target_unit_prefix}_denominator"),
+            conversion_matrix,
+            value,
+            value_unit=pl.col(f"{value_unit_prefix}_denominator"),
+            invert=True,
+        )
+        .with_columns(
+            pl.concat_str(
+                [f"{value_unit_prefix}_numerator", f"{value_unit_prefix}_denominator"],
+                separator="/",
+            ).alias(value_unit_name)
+        )
+        .select(pl.exclude(f"^{target_unit_prefix}.*$", f"^{value_unit_prefix}.*$"))
+    )
+
+    return result
+
+
+def _impl_convert_single_dim(
+    df: FrameType,
+    target_unit: pl.Expr,
+    conversion_matrix: FrameType,
+    value: pl.Expr,
+    value_unit: pl.Expr,
+    invert: bool,
+) -> FrameType:
+    value_unit_name = value_unit.meta.output_name()
+    target_unit_name = target_unit.meta.output_name()
+
+    conversion_join_cols = ["target", "base"] if invert else ["base", "target"]
+    working_columns = []
+
+    if target_unit_name not in df.columns:
+        df = df.with_columns(target_unit.alias(target_unit_name))
+        working_columns.append(target_unit_name)
+
+    result = (
+        df.join(
+            conversion_matrix,
+            left_on=[value_unit_name, target_unit_name],
+            right_on=conversion_join_cols,
+            how="left",
+        )
+        .with_columns(
+            (value * pl.coalesce("conversion_factor", 1.0)).alias(
+                value.meta.output_name()
+            ),
+            pl.when(pl.col("conversion_factor").is_null())
+            .then(value_unit_name)
+            .otherwise(target_unit_name),
+        )
+        .select(pl.exclude("conversion_factor", *working_columns))
+    )
+
+    return result
 
 
 def impl_convert(
@@ -69,62 +178,15 @@ def impl_convert(
     conversion_matrix: FrameType,
     value: pl.Expr,
     value_unit: pl.Expr,
-    strict: bool,
+    is_multi_dim: bool,
 ) -> FrameType:
-    
-    is_target_multi_unit = target_unit.cast(pl.String).str.contains('/').alias("is_target_multi_unit")
-    need_invert = value_unit.cast(pl.String).str.starts_with("~").alias("need_invert")
-
-    conversions = (
-        conversion_matrix
-        .filter(target=target_unit.cast(pl.String).str.to_lowercase())
-        .rename({value.meta.output_name(): "conversion_factor"})
-    )
-
-    if conversions.lazy().collect().is_empty():
-        raise ValueError(f"Unknown target_unit: {str(target_unit)}")
-
-    # df = df.lazy().collect()
-    # conversions = conversions.lazy().collect()
-
-    result = (
-        df
-        .with_columns(is_target_multi_unit, need_invert)
-    )
-
-    result = (
-        result
-        .with_columns(
-            pl.when(pl.col("need_invert"))
-              .then(1/value)
-              .otherwise(value)
-              .alias(value.meta.output_name()),
-            pl.when(pl.col("need_invert"))
-              .then(value_unit.cast(pl.String).str.strip_prefix("~"))
-              .otherwise(value_unit)
-              .alias(value_unit.meta.output_name())
+    if is_multi_dim:
+        result = _impl_convert_multi_dim(
+            df, target_unit, conversion_matrix, value, value_unit
         )
-        .join(
-            conversions,
-            left_on=value_unit.cast(pl.String).str.to_lowercase().cast(pl.Categorical),
-            right_on="base",
-            how="left"
+    else:
+        result = _impl_convert_single_dim(
+            df, target_unit, conversion_matrix, value, value_unit, invert=False
         )
-        .with_columns(
-            (value * pl.coalesce("conversion_factor", 1.0)).alias(value.meta.output_name()),
-            pl.coalesce("target", value_unit).alias(value_unit.meta.output_name())
-        )
-        .with_columns(
-            pl.when(pl.col("need_invert"))
-              .then(1/value)
-              .otherwise(value)
-              .alias(value.meta.output_name()),
-            pl.when(pl.col("need_invert"))
-              .then(pl.concat_str([pl.lit("~"), value_unit]).cast(pl.Categorical))
-              .otherwise(value_unit)
-              .alias(value_unit.meta.output_name())
-        )
-        .drop("target", "conversion_factor", "need_invert", "is_target_multi_unit")
-    )
 
     return result

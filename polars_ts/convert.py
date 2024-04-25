@@ -27,7 +27,6 @@ class ConvertFrame(SeriesFrame, Generic[FrameType]):
         )
 
         return prepare_result(df)
-        
 
     def convert(
         self,
@@ -35,10 +34,9 @@ class ConvertFrame(SeriesFrame, Generic[FrameType]):
         conversion_matrix: FrameType,
         value: IntoExpr = pl.col("value"),
         value_unit: Optional[IntoExpr] = None,
-        strict: bool = True,
+        is_multi_dim: bool = False,
     ) -> FrameType:
-        
-        target_unit = parse_into_expr(target_unit, str_as_lit=True).cast(pl.Categorical)
+        target_unit = parse_into_expr(target_unit).cast(pl.Categorical)
         value = parse_into_expr(value)
 
         if value_unit is None:
@@ -47,15 +45,14 @@ class ConvertFrame(SeriesFrame, Generic[FrameType]):
                 raise ValueError(f"Missing unit column: '{value_unit}'")
 
         value_unit = parse_into_expr(value_unit).cast(pl.Categorical)
-        
+
         df = impl_convert(
             self._df,
             target_unit,
             conversion_matrix,
             value,
             value_unit,
-            strict,
+            is_multi_dim,
         )
 
         return prepare_result(df)
-

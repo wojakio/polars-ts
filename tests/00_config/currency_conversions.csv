@@ -1,4 +1,4 @@
-base,target,value
+base,target,conversion_factor
 BTC,USD,1000000
 BTC,ETH,100
 ETH,XDG,100000
