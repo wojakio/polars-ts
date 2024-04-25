@@ -10,6 +10,7 @@ from .sf import *
 from .tsf import *
 from .io import *
 from .time import *
+from .convert import *
 from .dummy import *
 from .mathx import *
 from .resample import *

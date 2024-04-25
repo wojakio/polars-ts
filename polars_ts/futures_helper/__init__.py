@@ -87,4 +87,6 @@ def impl_stitch_panama_backwards(unadj_df: FrameType) -> FrameType:
         ]
     )
 
+    result = result.sort("stitching", "asset", "time")
+
     return result
