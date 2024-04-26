@@ -1,3 +1,4 @@
+from typing import Tuple
 import polars as pl
 
 from ..types import FrameType
@@ -32,8 +33,6 @@ def impl_construct_closure(
     partial = (
         pl.concat([conv_df, inverses_df, identities_df])
         .with_columns(
-            pl.col("base").cast(pl.String).str.to_lowercase(),
-            pl.col("target").cast(pl.String).str.to_lowercase(),
             pl.exclude("base", "target", "conversion_factor").forward_fill(),
         )
         .lazy()
@@ -58,8 +57,6 @@ def impl_construct_closure(
 
         added_rows = len(partial) - old_rows
 
-    partial = partial.with_columns(pl.col(pl.String).cast(pl.Categorical))
-
     result: FrameType = (
         partial.lazy()
         if isinstance(conv_df, pl.LazyFrame)
@@ -69,13 +66,19 @@ def impl_construct_closure(
     return result
 
 
-def _split_multi_unit(u: pl.Expr, field_name: str) -> pl.Expr:
-    return (
+def _split_multi_unit(u: pl.Expr, field_name: str) -> Tuple[pl.Expr, str, str]:
+    num = f"{field_name}_numerator"
+    den = f"{field_name}_denominator"
+
+    split_unit_expr = (
         u.cast(pl.String)
         .str.split_exact("/", 1)
-        .struct.rename_fields([f"{field_name}_numerator", f"{field_name}_denominator"])
+        .struct.rename_fields([num, den])
+        .cast(pl.Struct({num: pl.Categorical, den: pl.Categorical}))
         .alias(field_name)
     )
+
+    return split_unit_expr, num, den
 
 
 def _impl_convert_multi_dim(
@@ -91,8 +94,12 @@ def _impl_convert_multi_dim(
     value_unit_prefix = column_name_unique_over(value_unit_name, df)
     target_unit_prefix = column_name_unique_over(target_unit_name, df)
 
-    value_unit_list = _split_multi_unit(value_unit, value_unit_prefix)
-    target_unit_list = _split_multi_unit(target_unit, target_unit_prefix)
+    value_unit_list, value_num, value_den = _split_multi_unit(
+        value_unit, value_unit_prefix
+    )
+    target_unit_list, target_num, target_den = _split_multi_unit(
+        target_unit, target_unit_prefix
+    )
 
     result = (
         df.with_columns(
@@ -100,30 +107,25 @@ def _impl_convert_multi_dim(
             value_unit_list,
         )
         .unnest(target_unit_prefix, value_unit_prefix)
-        .with_columns(
-            pl.col(f"^{target_unit_prefix}.*$", f"^{value_unit_prefix}.*$").cast(
-                pl.Categorical
-            )
-        )
         .pipe(
             _impl_convert_single_dim,
-            pl.col(f"{target_unit_prefix}_numerator"),
+            pl.col(target_num),
             conversion_matrix,
             value,
-            value_unit=pl.col(f"{value_unit_prefix}_numerator"),
+            value_unit=pl.col(value_num),
             invert=False,
         )
         .pipe(
             _impl_convert_single_dim,
-            pl.col(f"{target_unit_prefix}_denominator"),
+            pl.col(target_den),
             conversion_matrix,
             value,
-            value_unit=pl.col(f"{value_unit_prefix}_denominator"),
+            value_unit=pl.col(value_den),
             invert=True,
         )
         .with_columns(
             pl.concat_str(
-                [f"{value_unit_prefix}_numerator", f"{value_unit_prefix}_denominator"],
+                [value_num, value_den],
                 separator="/",
             ).alias(value_unit_name)
         )

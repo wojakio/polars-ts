@@ -71,14 +71,15 @@ def test_continuous_contract():
     assert adjusted_prices_schema == expected_schema
 
     result = adjusted_prices.collect()
-    # result.write_parquet(get_data_filename("futures", "stitched_series.parquet"))
-    # expected_result = pl.read_parquet(get_data_filename("futures", "stitched_series.parquet"))
+    # instrument_prices.collect().write_parquet(get_data_filename("futures", "instrument_prices.parquet"))
+    # adjusted_prices.collect().write_parquet(get_data_filename("futures", "adjusted_prices.parquet"))
+    # expected_instrument_prices = pl.read_parquet(get_data_filename("futures", "instrument_prices.parquet"))
+    # expected_adjusted_prices = pl.read_parquet(get_data_filename("futures", "adjusted_prices.parquet"))
     # assert result.equals(expected_result)
 
     assert result.shape == (15660, 5)
-
-    # replace that with a stable hash
-    assert 7168100563240324100 == result.hash_rows().sum()
+    assert instrument_prices.collect()["value"].sum() == 926966.0052603701
+    assert adjusted_prices.collect()["value"].sum() == -121883.7423864497
 
     empty_result = empty_adjusted_prices.collect()
     assert list(empty_result.schema.items()) == expected_schema

@@ -7,8 +7,8 @@ from ..config import get_config_filename
 
 
 @pytest.fixture
-def physics_conversions() -> pl.LazyFrame:
-    filename = get_config_filename("physics_conversions.csv")
+def physical_conversions() -> pl.LazyFrame:
+    filename = get_config_filename("physical_conversions.csv")
     df = pl.LazyFrame().io.read_csv(filename)  # type: ignore[attr-defined]
     return df
 
@@ -20,8 +20,8 @@ def currency_conversions() -> pl.LazyFrame:
     return df
 
 
-def test_single_unit(physics_conversions):
-    physics_conversions = physics_conversions.convert.construct_closure()
+def test_single_unit(physical_conversions):
+    physical_conversions = physical_conversions.convert.construct_closure()
 
     df = (
         pl.from_records(
@@ -41,7 +41,7 @@ def test_single_unit(physics_conversions):
     # -----------------------------------------------------------------------
     # test unknown unit
     result_df = df.convert.convert(
-        pl.lit("unknown_unit"), physics_conversions
+        pl.lit("unknown_unit"), physical_conversions
     ).collect()
     assert result_df.equals(df.collect())
 
@@ -49,8 +49,8 @@ def test_single_unit(physics_conversions):
     # test actual conversion via literal argument
 
     result_df = (
-        df.convert.convert(pl.lit("nm"), physics_conversions)
-        .convert.convert(pl.lit("stone"), physics_conversions)
+        df.convert.convert(pl.lit("nm"), physical_conversions)
+        .convert.convert(pl.lit("stone"), physical_conversions)
         .collect()
     )
 
@@ -76,7 +76,7 @@ def test_single_unit(physics_conversions):
     )
 
     result_df = df_with_target_col.convert.convert(
-        "target_unit", physics_conversions
+        "target_unit", physical_conversions
     ).collect()
 
     expected_df = pl.DataFrame(
@@ -112,12 +112,12 @@ def test_single_unit(physics_conversions):
     )
 
     result_df_1 = df_renamed.convert.convert(
-        "desired_unit", physics_conversions, "given", "given_unit"
+        "desired_unit", physical_conversions, "given", "given_unit"
     ).collect()
 
     result_df_2 = df_renamed.convert.convert(
         "desired_unit",
-        physics_conversions,
+        physical_conversions,
         "given",
     ).collect()
 
@@ -133,8 +133,8 @@ def test_single_unit(physics_conversions):
     assert_frame_equal(result_df_2, expected_renamed_df)
 
 
-def test_dual_unit(physics_conversions):
-    physics_conversions = physics_conversions.convert.construct_closure()
+def test_dual_unit(physical_conversions):
+    physical_conversions = physical_conversions.convert.construct_closure()
 
     df = (
         pl.from_records(
@@ -152,7 +152,7 @@ def test_dual_unit(physics_conversions):
     # -----------------------------------------------------------------------
     # test unknown unit
     result_df = df.convert.convert(
-        pl.lit("unknown_numerator/unknown_denominator"), physics_conversions
+        pl.lit("unknown_numerator/unknown_denominator"), physical_conversions
     ).collect()
     assert result_df.equals(df.collect())
 
@@ -160,7 +160,7 @@ def test_dual_unit(physics_conversions):
     # test actual conversion via literal argument
 
     result_df = df.convert.convert(
-        pl.lit("km/hr"), physics_conversions, is_multi_dim=True
+        pl.lit("km/hr"), physical_conversions, is_multi_dim=True
     ).collect()
 
     expected_df = pl.DataFrame(
@@ -179,7 +179,7 @@ def test_dual_unit(physics_conversions):
     )
 
     result_df = df_with_target_col.convert.convert(
-        "target_unit", physics_conversions, is_multi_dim=True
+        "target_unit", physical_conversions, is_multi_dim=True
     ).collect()
 
     expected_df = pl.DataFrame(
@@ -207,11 +207,11 @@ def test_dual_unit(physics_conversions):
     )
 
     result_df_1 = df_renamed.convert.convert(
-        "desired_unit", physics_conversions, "given", "given_unit", is_multi_dim=True
+        "desired_unit", physical_conversions, "given", "given_unit", is_multi_dim=True
     ).collect()
 
     result_df_2 = df_renamed.convert.convert(
-        "desired_unit", physics_conversions, "given", is_multi_dim=True
+        "desired_unit", physical_conversions, "given", is_multi_dim=True
     ).collect()
 
     expected_renamed_df = expected_df.rename(
