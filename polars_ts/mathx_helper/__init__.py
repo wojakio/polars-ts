@@ -25,7 +25,9 @@ def impl_diff(
     elif method == "fractional":
         result_expr = pl.col(numeric_cols).pct_change(k).over(grouper_cols)
     elif method == "geometric":
-        result_expr = (pl.col(numeric_cols) / (pl.col(numeric_cols).shift(k))  - 1).over(grouper_cols)
+        result_expr = (pl.col(numeric_cols) / (pl.col(numeric_cols).shift(k))).over(
+            grouper_cols
+        )
     else:
         raise ValueError(f"Unexpected diff method: {method}")
 

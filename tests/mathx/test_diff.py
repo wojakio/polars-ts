@@ -1,480 +1,234 @@
 from datetime import datetime, timedelta
 import polars as pl
-import polars_ts as ts
+from polars.testing import assert_frame_equal
 import pytest
 
 
 @pytest.fixture
-def df() -> pl.LazyFrame:
-    t = datetime(2024, 1, 1, 0)
+def arithmetic_df():
+    t = datetime(2024, 1, 1).date()
     steps = list(range(0, 100, 5))
     nrows = len(steps)
 
     result = pl.LazyFrame(
-        {
-            "time": [t + timedelta(days=days + 1) for days in range(0, nrows * 2, 2)],
-            "flt1": [2.18 + i for i in steps],
-            "text": [f"stext {i}" for i in steps],
-            "catsa": [f"A{i}" for i in steps],
-            "catsb": [f"B{i % 3}" for i in steps],
-            "flt2": [1.39 + i for i in steps],
-        },
-        schema={
-            "time": pl.Datetime,
-            "text": pl.String,
-            "catsa": pl.Categorical,
-            "catsb": pl.Categorical,
-            "flt1": pl.Float64,
-            "flt2": pl.Float32,
-        },
+        [
+            pl.Series(
+                "t", [t + timedelta(days=days + 1) for days in range(0, nrows * 2, 2)]
+            ),
+            pl.Series("n", list(range(0, nrows))),
+        ]
     )
 
     return result
 
 
-def test_arithmetic_method(df):
-    diff_drop_nulls = df.mathx.diff(1).collect()
+@pytest.fixture
+def fractional_df():
+    t = datetime(2024, 1, 1).date()
+    steps = list(range(0, 100, 5))
+    nrows = len(steps)
+    factor = 1.1
 
-    expected_diff_drop_nulls = df.clear().collect()
-    assert diff_drop_nulls.equals(expected_diff_drop_nulls)
-
-    diff_ignore_nulls = df.mathx.diff(1, null_strategy="ignore").collect()
-
-    expected_diff_ignore_nulls = pl.DataFrame(
+    result = pl.LazyFrame(
         [
             pl.Series(
-                "time",
-                [
-                    datetime(2024, 1, 2, 0, 0),
-                    datetime(2024, 1, 4, 0, 0),
-                    datetime(2024, 1, 6, 0, 0),
-                    datetime(2024, 1, 8, 0, 0),
-                    datetime(2024, 1, 10, 0, 0),
-                    datetime(2024, 1, 12, 0, 0),
-                    datetime(2024, 1, 14, 0, 0),
-                    datetime(2024, 1, 16, 0, 0),
-                    datetime(2024, 1, 18, 0, 0),
-                    datetime(2024, 1, 20, 0, 0),
-                    datetime(2024, 1, 22, 0, 0),
-                    datetime(2024, 1, 24, 0, 0),
-                    datetime(2024, 1, 26, 0, 0),
-                    datetime(2024, 1, 28, 0, 0),
-                    datetime(2024, 1, 30, 0, 0),
-                    datetime(2024, 2, 1, 0, 0),
-                    datetime(2024, 2, 3, 0, 0),
-                    datetime(2024, 2, 5, 0, 0),
-                    datetime(2024, 2, 7, 0, 0),
-                    datetime(2024, 2, 9, 0, 0),
-                ],
-                dtype=pl.Datetime(time_unit="us", time_zone=None),
+                "t", [t + timedelta(days=days + 1) for days in range(0, nrows * 2, 2)]
             ),
+            pl.Series("n", [1 * (factor**n) for n in range(0, nrows)]),
+        ]
+    )
+
+    return result
+
+
+@pytest.fixture
+def geometric_df():
+    t = datetime(2024, 1, 1).date()
+    steps = list(range(0, 100, 5))
+    nrows = len(steps)
+    factor = 1.1
+
+    result = pl.LazyFrame(
+        [
             pl.Series(
-                "text",
-                [
-                    "stext 0",
-                    "stext 5",
-                    "stext 10",
-                    "stext 15",
-                    "stext 20",
-                    "stext 25",
-                    "stext 30",
-                    "stext 35",
-                    "stext 40",
-                    "stext 45",
-                    "stext 50",
-                    "stext 55",
-                    "stext 60",
-                    "stext 65",
-                    "stext 70",
-                    "stext 75",
-                    "stext 80",
-                    "stext 85",
-                    "stext 90",
-                    "stext 95",
-                ],
-                dtype=pl.String,
+                "t", [t + timedelta(days=days + 1) for days in range(0, nrows * 2, 2)]
             ),
+            pl.Series("n", [1 * (factor**n) for n in range(0, nrows)]),
+        ]
+    )
+
+    return result
+
+
+def test_arithmetic_method(arithmetic_df):
+    result_df = arithmetic_df.mathx.diff(1, method="arithmetic").collect()
+
+    expected_df = pl.DataFrame(
+        [
+            arithmetic_df.collect()["t"].slice(1),
             pl.Series(
-                "catsa",
-                [
-                    "A0",
-                    "A5",
-                    "A10",
-                    "A15",
-                    "A20",
-                    "A25",
-                    "A30",
-                    "A35",
-                    "A40",
-                    "A45",
-                    "A50",
-                    "A55",
-                    "A60",
-                    "A65",
-                    "A70",
-                    "A75",
-                    "A80",
-                    "A85",
-                    "A90",
-                    "A95",
-                ],
-                dtype=pl.Categorical(ordering="physical"),
-            ),
-            pl.Series(
-                "catsb",
-                [
-                    "B0",
-                    "B2",
-                    "B1",
-                    "B0",
-                    "B2",
-                    "B1",
-                    "B0",
-                    "B2",
-                    "B1",
-                    "B0",
-                    "B2",
-                    "B1",
-                    "B0",
-                    "B2",
-                    "B1",
-                    "B0",
-                    "B2",
-                    "B1",
-                    "B0",
-                    "B2",
-                ],
-                dtype=pl.Categorical(ordering="physical"),
-            ),
-            pl.Series(
-                "flt1",
-                [
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                ],
-                dtype=pl.Float64,
-            ),
-            pl.Series(
-                "flt2",
-                [
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                ],
-                dtype=pl.Float32,
+                "n",
+                [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+                dtype=pl.Int64,
             ),
         ]
     )
 
-    assert diff_ignore_nulls.equals(expected_diff_ignore_nulls)
+    assert_frame_equal(result_df, expected_df)
 
-    diff_one = df.mathx.diff(1, partition=ts.Grouper().by("catsb")).collect()
+    result_df = arithmetic_df.mathx.diff(2, method="arithmetic").collect()
 
-    expected_diff_one = pl.DataFrame(
+    expected_df = pl.DataFrame(
         [
+            arithmetic_df.collect()["t"].slice(2),
             pl.Series(
-                "time",
-                [
-                    datetime(2024, 1, 8, 0, 0),
-                    datetime(2024, 1, 10, 0, 0),
-                    datetime(2024, 1, 12, 0, 0),
-                    datetime(2024, 1, 14, 0, 0),
-                    datetime(2024, 1, 16, 0, 0),
-                    datetime(2024, 1, 18, 0, 0),
-                    datetime(2024, 1, 20, 0, 0),
-                    datetime(2024, 1, 22, 0, 0),
-                    datetime(2024, 1, 24, 0, 0),
-                    datetime(2024, 1, 26, 0, 0),
-                    datetime(2024, 1, 28, 0, 0),
-                    datetime(2024, 1, 30, 0, 0),
-                    datetime(2024, 2, 1, 0, 0),
-                    datetime(2024, 2, 3, 0, 0),
-                    datetime(2024, 2, 5, 0, 0),
-                    datetime(2024, 2, 7, 0, 0),
-                    datetime(2024, 2, 9, 0, 0),
-                ],
-                dtype=pl.Datetime(time_unit="us", time_zone=None),
-            ),
-            pl.Series(
-                "text",
-                [
-                    "stext 15",
-                    "stext 20",
-                    "stext 25",
-                    "stext 30",
-                    "stext 35",
-                    "stext 40",
-                    "stext 45",
-                    "stext 50",
-                    "stext 55",
-                    "stext 60",
-                    "stext 65",
-                    "stext 70",
-                    "stext 75",
-                    "stext 80",
-                    "stext 85",
-                    "stext 90",
-                    "stext 95",
-                ],
-                dtype=pl.String,
-            ),
-            pl.Series(
-                "catsa",
-                [
-                    "A15",
-                    "A20",
-                    "A25",
-                    "A30",
-                    "A35",
-                    "A40",
-                    "A45",
-                    "A50",
-                    "A55",
-                    "A60",
-                    "A65",
-                    "A70",
-                    "A75",
-                    "A80",
-                    "A85",
-                    "A90",
-                    "A95",
-                ],
-                dtype=pl.Categorical(ordering="physical"),
-            ),
-            pl.Series(
-                "catsb",
-                [
-                    "B0",
-                    "B2",
-                    "B1",
-                    "B0",
-                    "B2",
-                    "B1",
-                    "B0",
-                    "B2",
-                    "B1",
-                    "B0",
-                    "B2",
-                    "B1",
-                    "B0",
-                    "B2",
-                    "B1",
-                    "B0",
-                    "B2",
-                ],
-                dtype=pl.Categorical(ordering="physical"),
-            ),
-            pl.Series(
-                "flt1",
-                [
-                    15.0,
-                    15.0,
-                    15.0,
-                    15.0,
-                    15.0,
-                    15.0,
-                    15.0,
-                    15.0,
-                    15.0,
-                    15.0,
-                    15.000000000000007,
-                    15.000000000000007,
-                    15.000000000000007,
-                    15.0,
-                    15.0,
-                    15.0,
-                    15.0,
-                ],
-                dtype=pl.Float64,
-            ),
-            pl.Series(
-                "flt2",
-                [
-                    14.999999046325684,
-                    15.0,
-                    14.999999046325684,
-                    15.0,
-                    15.0,
-                    15.0,
-                    15.0,
-                    15.0,
-                    15.0,
-                    15.0,
-                    15.0,
-                    15.0,
-                    15.0,
-                    15.0,
-                    15.0,
-                    15.0,
-                    15.0,
-                ],
-                dtype=pl.Float32,
+                "n",
+                [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
+                dtype=pl.Int64,
             ),
         ]
     )
 
-    assert diff_one.equals(expected_diff_one)
+    assert_frame_equal(result_df, expected_df)
 
-    diff_two = df.mathx.diff(2, partition=ts.Grouper().by("catsb")).collect()
 
-    expected_diff_two = pl.DataFrame(
+def test_geometric_method(geometric_df):
+    result_df = geometric_df.mathx.diff(1, method="geometric").collect()
+
+    expected_df = pl.DataFrame(
         [
+            geometric_df.collect()["t"].slice(1),
             pl.Series(
-                "time",
+                "n",
                 [
-                    datetime(2024, 1, 14, 0, 0),
-                    datetime(2024, 1, 16, 0, 0),
-                    datetime(2024, 1, 18, 0, 0),
-                    datetime(2024, 1, 20, 0, 0),
-                    datetime(2024, 1, 22, 0, 0),
-                    datetime(2024, 1, 24, 0, 0),
-                    datetime(2024, 1, 26, 0, 0),
-                    datetime(2024, 1, 28, 0, 0),
-                    datetime(2024, 1, 30, 0, 0),
-                    datetime(2024, 2, 1, 0, 0),
-                    datetime(2024, 2, 3, 0, 0),
-                    datetime(2024, 2, 5, 0, 0),
-                    datetime(2024, 2, 7, 0, 0),
-                    datetime(2024, 2, 9, 0, 0),
-                ],
-                dtype=pl.Datetime(time_unit="us", time_zone=None),
-            ),
-            pl.Series(
-                "text",
-                [
-                    "stext 30",
-                    "stext 35",
-                    "stext 40",
-                    "stext 45",
-                    "stext 50",
-                    "stext 55",
-                    "stext 60",
-                    "stext 65",
-                    "stext 70",
-                    "stext 75",
-                    "stext 80",
-                    "stext 85",
-                    "stext 90",
-                    "stext 95",
-                ],
-                dtype=pl.String,
-            ),
-            pl.Series(
-                "catsa",
-                [
-                    "A30",
-                    "A35",
-                    "A40",
-                    "A45",
-                    "A50",
-                    "A55",
-                    "A60",
-                    "A65",
-                    "A70",
-                    "A75",
-                    "A80",
-                    "A85",
-                    "A90",
-                    "A95",
-                ],
-                dtype=pl.Categorical(ordering="physical"),
-            ),
-            pl.Series(
-                "catsb",
-                [
-                    "B0",
-                    "B2",
-                    "B1",
-                    "B0",
-                    "B2",
-                    "B1",
-                    "B0",
-                    "B2",
-                    "B1",
-                    "B0",
-                    "B2",
-                    "B1",
-                    "B0",
-                    "B2",
-                ],
-                dtype=pl.Categorical(ordering="physical"),
-            ),
-            pl.Series(
-                "flt1",
-                [
-                    30.0,
-                    30.0,
-                    30.0,
-                    30.0,
-                    30.0,
-                    30.0,
-                    30.0,
-                    30.000000000000007,
-                    30.000000000000007,
-                    30.000000000000007,
-                    30.000000000000007,
-                    30.000000000000007,
-                    30.000000000000007,
-                    30.0,
+                    1.1,
+                    1.1,
+                    1.1,
+                    1.1,
+                    1.1,
+                    1.1,
+                    1.1,
+                    1.1,
+                    1.1,
+                    1.1,
+                    1.1,
+                    1.1,
+                    1.1,
+                    1.1,
+                    1.1,
+                    1.1,
+                    1.1,
+                    1.1,
+                    1.1,
                 ],
                 dtype=pl.Float64,
-            ),
-            pl.Series(
-                "flt2",
-                [
-                    30.0,
-                    30.0,
-                    30.0,
-                    30.0,
-                    30.0,
-                    30.0,
-                    30.0,
-                    30.0,
-                    30.0,
-                    30.0,
-                    30.0,
-                    30.0,
-                    30.0,
-                    30.0,
-                ],
-                dtype=pl.Float32,
             ),
         ]
     )
 
-    assert diff_two.equals(expected_diff_two)
+    assert_frame_equal(result_df, expected_df)
+
+    result_df = geometric_df.mathx.diff(2, method="geometric").collect()
+
+    expected_df = pl.DataFrame(
+        [
+            geometric_df.collect()["t"].slice(2),
+            pl.Series(
+                "n",
+                [
+                    1.21,
+                    1.21,
+                    1.21,
+                    1.21,
+                    1.21,
+                    1.21,
+                    1.21,
+                    1.21,
+                    1.21,
+                    1.21,
+                    1.21,
+                    1.21,
+                    1.21,
+                    1.21,
+                    1.21,
+                    1.21,
+                    1.21,
+                    1.21,
+                ],
+                dtype=pl.Float64,
+            ),
+        ]
+    )
+
+    assert_frame_equal(result_df, expected_df)
+
+
+def test_fractional_method(fractional_df):
+    result_df = fractional_df.mathx.diff(1, method="fractional").collect()
+
+    expected_df = pl.DataFrame(
+        [
+            fractional_df.collect()["t"].slice(1),
+            pl.Series(
+                "n",
+                [
+                    0.1,
+                    0.1,
+                    0.1,
+                    0.1,
+                    0.1,
+                    0.1,
+                    0.1,
+                    0.1,
+                    0.1,
+                    0.1,
+                    0.1,
+                    0.1,
+                    0.1,
+                    0.1,
+                    0.1,
+                    0.1,
+                    0.1,
+                    0.1,
+                    0.1,
+                ],
+                dtype=pl.Float64,
+            ),
+        ]
+    )
+
+    assert_frame_equal(result_df, expected_df)
+
+    result_df = fractional_df.mathx.diff(2, method="fractional").collect()
+
+    expected_df = pl.DataFrame(
+        [
+            fractional_df.collect()["t"].slice(2),
+            pl.Series(
+                "n",
+                [
+                    0.21,
+                    0.21,
+                    0.21,
+                    0.21,
+                    0.21,
+                    0.21,
+                    0.21,
+                    0.21,
+                    0.21,
+                    0.21,
+                    0.21,
+                    0.21,
+                    0.21,
+                    0.21,
+                    0.21,
+                    0.21,
+                    0.21,
+                    0.21,
+                ],
+                dtype=pl.Float64,
+            ),
+        ]
+    )
+
+    assert_frame_equal(result_df, expected_df)
