@@ -7,7 +7,13 @@ from .grouper import Grouper
 from .sf import SeriesFrame
 from .sf_helper import prepare_result
 
-from .mathx_helper import impl_diff, impl_cum_sum, impl_shift, impl_ewm_mean
+from .mathx_helper import (
+    impl_diff,
+    impl_cum_sum,
+    impl_shift,
+    impl_ewm_mean,
+    impl_ewm_mean_config,
+)
 
 from .types import FrameType, NullStrategyType, SentinelNumeric
 
@@ -47,8 +53,16 @@ class MathxFrame(SeriesFrame, Generic[FrameType]):
 
     def ewm_mean(
         self,
-        half_life: float,
+        alpha: float,
         partition: Grouper = Grouper().by_all(),
     ) -> FrameType:
-        df = impl_ewm_mean(self._df, half_life, partition)
+        df = impl_ewm_mean(self._df, alpha, partition)
+        return prepare_result(df)
+
+    def ewm_mean_config(
+        self,
+        config: FrameType,
+        partition: Grouper = Grouper().by_all_and("alpha"),
+    ) -> FrameType:
+        df = impl_ewm_mean_config(self._df, config, partition)
         return prepare_result(df)

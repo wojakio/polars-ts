@@ -3,6 +3,7 @@ use crate::math::{impl_random_normal, impl_random_uniform, impl_wyhash};
 // use crate::time::impl_datetime_ranges_custom;
 use crate::time::utils::temporal_ranges_impl_broadcast;
 use crate::utils::same_output_type;
+use polars_ops::series::{ewm_mean, EWMOptions};
 use polars_time::chunkedarray::DateMethods;
 use polars_time::{datetime_range_impl, ClosedWindow, Duration};
 
@@ -188,6 +189,26 @@ fn pl_datetime_ranges_custom(inputs: &[Series]) -> PolarsResult<Series> {
     let to_type = DataType::List(Box::new(DataType::Date));
     let result = out.cast(&to_type)?.into_series();
     Ok(result)
+}
+
+#[polars_expr(output_type_func=same_output_type)]
+fn pl_ewm_custom(inputs: &[Series]) -> PolarsResult<Series> {
+    let s = &inputs[0];
+    let alpha = inputs[1].f64()?.get(0).unwrap();
+    let min_periods = inputs[2].u64()?.get(0).unwrap() as usize;
+    let adjust = inputs[3].bool()?.get(0).unwrap();
+
+    let options = EWMOptions {
+        alpha,
+        adjust,
+        bias: false,
+        min_periods: min_periods,
+        ignore_nulls: true,
+    };
+
+    // dbg!(&options);
+
+    ewm_mean(s, options)
 }
 
 #[cfg(test)]

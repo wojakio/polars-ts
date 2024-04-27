@@ -913,6 +913,7 @@ dependencies = [
  "polars",
  "polars-arrow",
  "polars-core",
+ "polars-ops",
  "polars-time",
  "pyo3",
  "pyo3-polars",

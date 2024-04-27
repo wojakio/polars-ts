@@ -1,8 +1,9 @@
-import math
 from typing import Literal
 
 import polars as pl
+from polars.type_aliases import JoinStrategy
 
+from ..expr.mathx import ewm_custom
 from ..sf_helper import impl_fill_null
 from ..grouper import Grouper
 
@@ -78,5 +79,39 @@ def impl_ewm_mean(
     return result
 
 
-def half_life_to_alpha(lam: float) -> float:
-    return -1 / math.log(lam)
+def impl_ewm_mean_config(
+    df: FrameType,
+    params: FrameType,
+    partition: Grouper,
+) -> FrameType:
+    result_schema = (
+        pl.Series(values=df.columns + Grouper.categories(params, include_time=False))
+        .unique()
+        .to_list()
+    )
+
+    default_params = params.select(
+        pl.Series("min_periods", [0]),
+        pl.Series("adjust", [False]),
+    )
+
+    missing_params = set(default_params.columns).difference(params.columns)
+    if len(missing_params) > 0:
+        params = params.join(default_params.select(missing_params), how="cross")
+
+    common_cols = Grouper.common_categories(df, params)
+    join_type: JoinStrategy = "cross" if len(common_cols) == 0 else "left"
+    df = df.join(params, on=common_cols, how=join_type)
+
+    grouper_cols = partition.apply(df)
+
+    result = df.with_columns(
+        ewm_custom(
+            pl.col(partition.numerics(df)),
+            "alpha",
+            "min_periods",
+            "adjust",
+        ).over(grouper_cols)
+    ).select(result_schema)
+
+    return result

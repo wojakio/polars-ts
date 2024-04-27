@@ -65,7 +65,15 @@ class Grouper:
         return g
 
     @staticmethod
-    def by_time_and_all() -> "Grouper":
+    def by_all_and(*cols: str | Iterable[str]) -> "Grouper":
+        g = Grouper()
+        g._all = True
+        g._has_defined_spec = True
+        g._by, _ = Grouper._make_set(*cols)
+        return g
+
+    @staticmethod
+    def by_time_and_all(*additional_cols: str | Iterable[str]) -> "Grouper":
         g = Grouper()
         g._all = True
         g._result_includes_time = True
@@ -143,12 +151,13 @@ class Grouper:
             df_has_time = "time" in df
             cols = set(Grouper.categories(df, include_time=False))
 
-            if len(self._by) > 0:
+            if not self._all and len(self._by) > 0:
                 cols = cols.intersection(self._by)
             elif len(self._omitting) > 0:
                 cols = cols.difference(self._omitting)
             elif self._all:
-                pass
+                if len(self._by) > 0:
+                    cols = cols.union(self._by)
             elif len(self._by) == 0 and len(self._omitting) == 0:
                 cols = set()
 
@@ -169,13 +178,16 @@ class Grouper:
             time_clause = "TimeAnd" if self._result_includes_time else ""
             return f"Omitting{time_clause}({','.join(sorted(self._omitting))})"
 
-        if len(self._by) > 0:
+        if not self._all and len(self._by) > 0:
             time_clause = "TimeAnd" if self._result_includes_time else ""
             return f"By{time_clause}({','.join(sorted(self._by))})"
 
         if self._all:
             time_clause = "TimeAnd" if self._result_includes_time else ""
-            return f"By{time_clause}All"
+            and_clause = (
+                f"And({','.join(sorted(self._by))})" if len(self._by) > 0 else ""
+            )
+            return f"By{time_clause}All{and_clause}"
 
         if self._common:
             time_clause = "TimeAnd" if self._result_includes_time else ""
