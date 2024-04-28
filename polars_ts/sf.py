@@ -28,13 +28,13 @@ class SeriesFrame(Generic[FrameType]):
     def join(
         self,
         other: FrameType,
-        grouper: Grouper = Grouper().by_common_including_time(),
+        grouper: Grouper = Grouper.by_common_including_time(),
         how: JoinStrategy = "inner",
     ) -> FrameType:
         df = impl_join(self._df, other, grouper, how)
         return prepare_result(df)
 
-    def unique(self, grouper: Grouper = Grouper().by_time_and_all()) -> FrameType:
+    def unique(self, grouper: Grouper = Grouper.by_time_and_all()) -> FrameType:
         df = impl_unique(self._df, grouper)
         return prepare_result(df)
 

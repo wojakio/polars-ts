@@ -27,19 +27,19 @@ class MathxFrame(SeriesFrame, Generic[FrameType]):
     def diff(
         self,
         params: FrameType,
-        partition: Grouper = Grouper().by_all_and("n"),
+        partition: Grouper = Grouper.by_all_and("n"),
     ) -> FrameType:
         df = impl_diff(self._df, params, partition)
         return prepare_result(df)
 
-    def cum_sum(self, partition: Grouper = Grouper().by_all()) -> FrameType:
+    def cum_sum(self, partition: Grouper = Grouper.by_all()) -> FrameType:
         df = impl_cum_sum(self._df, partition)
         return prepare_result(df)
 
     def shift(
         self,
         params: FrameType,
-        partition: Grouper = Grouper().by_all_and("n"),
+        partition: Grouper = Grouper.by_all_and("n"),
     ) -> FrameType:
         df = impl_shift(self._df, params, partition)
         return prepare_result(df)
@@ -47,7 +47,7 @@ class MathxFrame(SeriesFrame, Generic[FrameType]):
     def ewm_mean(
         self,
         params: FrameType,
-        partition: Grouper = Grouper().by_all_and("alpha"),
+        partition: Grouper = Grouper.by_all_and("alpha"),
     ) -> FrameType:
         df = impl_ewm_mean(self._df, params, partition)
         return prepare_result(df)

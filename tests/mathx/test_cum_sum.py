@@ -33,7 +33,7 @@ def df() -> pl.LazyFrame:
 
 
 def test_basic(df):
-    cum_sum_one = df.mathx.cum_sum(partition=ts.Grouper().by("catsb")).collect()
+    cum_sum_one = df.mathx.cum_sum(partition=ts.Grouper.by("catsb")).collect()
     expected_cum_sum_one = pl.DataFrame(
         [
             pl.Series(

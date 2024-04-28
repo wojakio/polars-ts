@@ -89,7 +89,7 @@ def impl_align_values(
         lhs_cat_cols = Grouper.categories(lhs, include_time=True)
         lhs = lhs.select(lhs_cat_cols)
 
-    common_cols = Grouper().by_common_including_time().apply(lhs, rhs)
+    common_cols = Grouper.by_common_including_time().apply(lhs, rhs)
 
     result = (
         lhs.join(rhs, on=common_cols, how="outer_coalesce")
