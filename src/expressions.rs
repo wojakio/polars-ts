@@ -3,12 +3,13 @@ use crate::math::{impl_random_normal, impl_random_uniform, impl_wyhash};
 // use crate::time::impl_datetime_ranges_custom;
 use crate::time::utils::temporal_ranges_impl_broadcast;
 use crate::utils::same_output_type;
-use polars_ops::series::{ewm_mean, EWMOptions};
+use polars_ops::series::{diff, ewm_mean, pct_change, EWMOptions};
 use polars_time::chunkedarray::DateMethods;
 use polars_time::{datetime_range_impl, ClosedWindow, Duration};
 
 use polars_arrow::temporal_conversions::MILLISECONDS_IN_DAY;
 use std::collections::HashSet;
+use std::ops::Add;
 
 use polars::prelude::*;
 
@@ -214,10 +215,33 @@ fn pl_ewm_custom(inputs: &[Series]) -> PolarsResult<Series> {
 #[polars_expr(output_type_func=same_output_type)]
 fn pl_shift_custom(inputs: &[Series]) -> PolarsResult<Series> {
     let s = &inputs[0];
-    let shift_ = inputs[1].i64()?.get(0).unwrap();
+    let n = inputs[1].i64()?.get(0).unwrap();
 
-    let shifted = s.shift(shift_);
+    let shifted = s.shift(n);
     Ok(shifted)
+}
+
+#[polars_expr(output_type_func=same_output_type)]
+fn pl_diff_custom(inputs: &[Series]) -> PolarsResult<Series> {
+    let s = &inputs[0];
+    let n = inputs[1].i64()?.get(0).unwrap();
+    let method = inputs[2].str()?.get(0).unwrap();
+
+    match method {
+        "arithmetic" => diff(s, n, polars::series::ops::NullBehavior::Ignore),
+        "fractional" => {
+            let n = Series::new("n__", &[n]);
+            pct_change(s, &n)
+        }
+        "geometric" => {
+            let n = Series::new("n__", &[n]);
+            let res = pct_change(s, &n).unwrap().add(1_f64);
+            Ok(res)
+        }
+        _ => {
+            panic!("unknown diff method `{:?}`", method)
+        }
+    }
 }
 
 #[cfg(test)]

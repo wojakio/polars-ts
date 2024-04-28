@@ -11,8 +11,13 @@ CorrelationType = Literal[
 ]
 
 NullStrategyType = Literal[
-    "drop",
     "ignore",
+    # drop strategies - alters length of series
+    "drop",
+    # "drop_at_start",
+    # "drop_at_end",
+    # "drop_n",
+    # fill strategies
     "sentinel",
     "forward",
     "backward",

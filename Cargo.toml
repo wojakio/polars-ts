@@ -13,7 +13,7 @@ pyo3-polars = { version = "0.13.0", features = ["derive"] }
 serde = { version = "1", features = ["derive"] }
 polars = { version = "0.39.2", features = ["dtype-date"], default-features = false }
 polars-core = { version = "0.39.2", features=["serde"], default-features = false }
-polars-ops = { version = "0.39.2", features=["ewma"], default-features = false }
+polars-ops = { version = "0.39.2", features=["diff", "ewma", "pct_change"], default-features = false }
 polars-time = { version = "0.39.2", features = ["dtype-date"], default-features = false }
 polars-arrow = { version = "0.39.2", default-features = false }
 

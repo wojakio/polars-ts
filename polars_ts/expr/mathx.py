@@ -32,14 +32,31 @@ def ewm_custom(
 
 def shift_custom(
     values_expr: IntoExpr,
-    shift: IntoExpr,
+    n: IntoExpr,
 ) -> pl.Expr:
     values_expr = parse_into_expr(values_expr)
-    shift = parse_into_expr(shift).cast(pl.Int64)
+    n = parse_into_expr(n).cast(pl.Int64)
 
     return pl.plugins.register_plugin_function(
         plugin_path=Path(__file__).parent.parent,
         function_name="pl_shift_custom",
-        args=[values_expr, shift],
+        args=[values_expr, n],
+        is_elementwise=False,
+    )
+
+
+def diff_custom(
+    values_expr: IntoExpr,
+    n: IntoExpr,
+    method: IntoExpr,
+) -> pl.Expr:
+    values_expr = parse_into_expr(values_expr)
+    n = parse_into_expr(n).cast(pl.Int64)
+    method = parse_into_expr(method).cast(pl.String)
+
+    return pl.plugins.register_plugin_function(
+        plugin_path=Path(__file__).parent.parent,
+        function_name="pl_diff_custom",
+        args=[values_expr, n, method],
         is_elementwise=False,
     )

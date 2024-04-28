@@ -54,6 +54,12 @@ class WithParams:
 
         return expr.cast(dtype)
 
+    def names(self) -> List[str]:
+        all_names = set(self._required_schema.keys()).union(
+            self._optional_schema.keys()
+        )
+        return sorted(all_names)
+
     def apply(self, df: FrameType, params: FrameType) -> Tuple[FrameType, List[str]]:
         missing_required_params = set(self._required_schema.keys()).difference(
             params.columns
@@ -70,8 +76,23 @@ class WithParams:
             )
 
         full_schema = self._optional_schema | self._required_schema
+
+        mismatch_param_dtype = [
+            (name, dtype, full_schema[name])
+            for name, dtype in df.schema.items()
+            if name in full_schema and dtype != full_schema[name]
+        ]
+
+        if len(mismatch_param_dtype) > 0:
+            raise ValueError(
+                f"Type-mismatch on input frame columns: {mismatch_param_dtype}"
+            )
+
         params = params.with_columns(
-            [self._set_type(pl.col(name), dtype) for name, dtype in full_schema.items()]
+            [
+                WithParams._set_type(pl.col(name), dtype)
+                for name, dtype in full_schema.items()
+            ]
         )
 
         common_cols = Grouper.common_categories(df, params)
@@ -82,22 +103,25 @@ class WithParams:
             pl.Series(
                 values=df.columns + Grouper.categories(params, include_time=False)
             )
-            .unique()
+            .unique(maintain_order=True)
             .to_list()
         )
 
         return df_with_params, result_cols
 
     def __repr__(self) -> str:
-        required = ",".join(sorted([
-            f"{name}:{dtype}"
-            for name, dtype in self._required_schema.items()
-        ]))
+        required = ",".join(
+            sorted([f"{name}:{dtype}" for name, dtype in self._required_schema.items()])
+        )
 
-        optionals = ",".join(sorted([
-            f"{name}:{dtype}={self._defaults[name]}"
-            for name, dtype in self._optional_schema.items()
-        ]))
+        optionals = ",".join(
+            sorted(
+                [
+                    f"{name}:{dtype}={self._defaults[name]}"
+                    for name, dtype in self._optional_schema.items()
+                ]
+            )
+        )
 
         rep = f"WithParams({required})[{optionals}]"
 

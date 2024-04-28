@@ -38,7 +38,7 @@ def params() -> pl.LazyFrame:
         [
             pl.Series("test_case", ["1", "2", "3", "4", "5"]),
             pl.Series("item", ["A", "A", "B", "B", "B"]),
-            pl.Series("shift", [1, 3, -1, -3, -50]),
+            pl.Series("n", [1, 3, -1, -3, -50]),
         ]
     ).with_columns(pl.col(pl.String).cast(pl.Categorical))
 

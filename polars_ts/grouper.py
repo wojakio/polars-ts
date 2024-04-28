@@ -120,8 +120,8 @@ class Grouper:
         return sorted(cols)
 
     @staticmethod
-    def numerics(df: FrameType) -> List[str]:
-        cols = df.select(pl.col(pl.NUMERIC_DTYPES)).columns
+    def numerics(df: FrameType, exclude: List[str]) -> List[str]:
+        cols = set(df.select(pl.col(pl.NUMERIC_DTYPES)).columns).difference(exclude)
         return sorted(cols)
 
     def apply(self, *dfs: FrameType) -> List[str]:

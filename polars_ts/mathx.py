@@ -1,4 +1,4 @@
-from typing import Literal, Generic
+from typing import Generic
 
 import polars as pl
 
@@ -14,7 +14,7 @@ from .mathx_helper import (
     impl_shift,
 )
 
-from .types import FrameType, NullStrategyType, SentinelNumeric
+from .types import FrameType
 
 __NAMESPACE = "mathx"
 
@@ -26,13 +26,10 @@ class MathxFrame(SeriesFrame, Generic[FrameType]):
 
     def diff(
         self,
-        k: int = 1,
-        method: Literal["arithmetic", "fractional", "geometric"] = "arithmetic",
-        partition: Grouper = Grouper().by_all(),
-        null_strategy: NullStrategyType = "drop",
-        null_sentinel: SentinelNumeric = 0.0,
+        params: FrameType,
+        partition: Grouper = Grouper().by_all_and("n"),
     ) -> FrameType:
-        df = impl_diff(self._df, k, method, partition, null_strategy, null_sentinel)
+        df = impl_diff(self._df, params, partition)
         return prepare_result(df)
 
     def cum_sum(self, partition: Grouper = Grouper().by_all()) -> FrameType:
@@ -42,7 +39,7 @@ class MathxFrame(SeriesFrame, Generic[FrameType]):
     def shift(
         self,
         params: FrameType,
-        partition: Grouper = Grouper().by_all(),
+        partition: Grouper = Grouper().by_all_and("n"),
     ) -> FrameType:
         df = impl_shift(self._df, params, partition)
         return prepare_result(df)
