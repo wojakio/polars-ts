@@ -202,13 +202,22 @@ fn pl_ewm_custom(inputs: &[Series]) -> PolarsResult<Series> {
         alpha,
         adjust,
         bias: false,
-        min_periods: min_periods,
+        min_periods,
         ignore_nulls: true,
     };
 
     // dbg!(&options);
 
     ewm_mean(s, options)
+}
+
+#[polars_expr(output_type_func=same_output_type)]
+fn pl_shift_custom(inputs: &[Series]) -> PolarsResult<Series> {
+    let s = &inputs[0];
+    let shift_ = inputs[1].i64()?.get(0).unwrap();
+
+    let shifted = s.shift(shift_);
+    Ok(shifted)
 }
 
 #[cfg(test)]

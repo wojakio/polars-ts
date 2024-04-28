@@ -1,376 +1,215 @@
-from datetime import datetime, timedelta
+import datetime
 import polars as pl
-import polars_ts as ts
+from polars.testing import assert_frame_equal
+import polars_ts as ts  # noqa
 import pytest
 
 
 @pytest.fixture
 def df() -> pl.LazyFrame:
-    t = datetime(2024, 1, 1, 0)
-    steps = list(range(0, 100, 5))
-    nrows = len(steps)
-
+    t = datetime.datetime(2024, 1, 1, 0).date()
+    nrows = 10
     result = pl.LazyFrame(
-        {
-            "time": [t + timedelta(days=days + 1) for days in range(0, nrows * 2, 2)],
-            "flt1": [2.18 + i for i in steps],
-            "text": [f"stext {i}" for i in steps],
-            "catsa": [f"A{i}" for i in steps],
-            "catsb": [f"B{i % 3}" for i in steps],
-            "flt2": [1.39 + i for i in steps],
-        },
-        schema={
-            "time": pl.Datetime,
-            "text": pl.String,
-            "catsa": pl.Categorical,
-            "catsb": pl.Categorical,
-            "flt1": pl.Float64,
-            "flt2": pl.Float32,
-        },
+        [
+            pl.Series(
+                "time",
+                [
+                    t + datetime.timedelta(days=days + 1)
+                    for days in range(0, nrows * 2, 2)
+                ],
+            ),
+            pl.Series(
+                "item",
+                ["A"] * (nrows // 2) + ["B"] * (nrows // 2),
+                dtype=pl.Categorical,
+            ),
+            pl.Series("val1", list(range(0, nrows // 2)) * 2, dtype=pl.Float64) + 1,
+            pl.Series("val2", list(range(0, nrows // 2)) * 2, dtype=pl.Float64) * 100.0
+            + 100,
+        ]
     )
 
     return result
 
 
-def test_lag(df):
-    lag_drop_nulls = df.mathx.shift(1, null_strategy="drop").collect()
-
-    expected_lag_drop_nulls = df.clear().collect()
-    assert lag_drop_nulls.equals(expected_lag_drop_nulls)
-
-    lag_one_ignore_nulls = df.mathx.shift(1, null_strategy="ignore").collect()
-
-    expected_lag_one_ignore_nulls = df.with_columns(flt1=None, flt2=None).collect()
-    assert lag_one_ignore_nulls.equals(expected_lag_one_ignore_nulls)
-
-    lag_one = df.mathx.shift(1, partition=ts.Grouper().by("catsb")).collect()
-
-    expected_lag_one = pl.DataFrame(
+@pytest.fixture
+def params() -> pl.LazyFrame:
+    result = pl.LazyFrame(
         [
-            pl.Series(
-                "time",
-                [
-                    datetime(2024, 1, 2, 0, 0),
-                    datetime(2024, 1, 4, 0, 0),
-                    datetime(2024, 1, 6, 0, 0),
-                    datetime(2024, 1, 8, 0, 0),
-                    datetime(2024, 1, 10, 0, 0),
-                    datetime(2024, 1, 12, 0, 0),
-                    datetime(2024, 1, 14, 0, 0),
-                    datetime(2024, 1, 16, 0, 0),
-                    datetime(2024, 1, 18, 0, 0),
-                    datetime(2024, 1, 20, 0, 0),
-                    datetime(2024, 1, 22, 0, 0),
-                    datetime(2024, 1, 24, 0, 0),
-                    datetime(2024, 1, 26, 0, 0),
-                    datetime(2024, 1, 28, 0, 0),
-                    datetime(2024, 1, 30, 0, 0),
-                    datetime(2024, 2, 1, 0, 0),
-                    datetime(2024, 2, 3, 0, 0),
-                    datetime(2024, 2, 5, 0, 0),
-                    datetime(2024, 2, 7, 0, 0),
-                    datetime(2024, 2, 9, 0, 0),
-                ],
-                dtype=pl.Datetime(time_unit="us", time_zone=None),
-            ),
-            pl.Series(
-                "text",
-                [
-                    "stext 0",
-                    "stext 5",
-                    "stext 10",
-                    "stext 15",
-                    "stext 20",
-                    "stext 25",
-                    "stext 30",
-                    "stext 35",
-                    "stext 40",
-                    "stext 45",
-                    "stext 50",
-                    "stext 55",
-                    "stext 60",
-                    "stext 65",
-                    "stext 70",
-                    "stext 75",
-                    "stext 80",
-                    "stext 85",
-                    "stext 90",
-                    "stext 95",
-                ],
-                dtype=pl.String,
-            ),
-            pl.Series(
-                "catsa",
-                [
-                    "A0",
-                    "A5",
-                    "A10",
-                    "A15",
-                    "A20",
-                    "A25",
-                    "A30",
-                    "A35",
-                    "A40",
-                    "A45",
-                    "A50",
-                    "A55",
-                    "A60",
-                    "A65",
-                    "A70",
-                    "A75",
-                    "A80",
-                    "A85",
-                    "A90",
-                    "A95",
-                ],
-                dtype=pl.Categorical(ordering="physical"),
-            ),
-            pl.Series(
-                "catsb",
-                [
-                    "B0",
-                    "B2",
-                    "B1",
-                    "B0",
-                    "B2",
-                    "B1",
-                    "B0",
-                    "B2",
-                    "B1",
-                    "B0",
-                    "B2",
-                    "B1",
-                    "B0",
-                    "B2",
-                    "B1",
-                    "B0",
-                    "B2",
-                    "B1",
-                    "B0",
-                    "B2",
-                ],
-                dtype=pl.Categorical(ordering="physical"),
-            ),
-            pl.Series(
-                "flt1",
-                [
-                    None,
-                    None,
-                    None,
-                    2.18,
-                    7.18,
-                    12.18,
-                    17.18,
-                    22.18,
-                    27.18,
-                    32.18,
-                    37.18,
-                    42.18,
-                    47.18,
-                    52.18,
-                    57.18,
-                    62.18,
-                    67.18,
-                    72.18,
-                    77.18,
-                    82.18,
-                ],
-                dtype=pl.Float64,
-            ),
-            pl.Series(
-                "flt2",
-                [
-                    None,
-                    None,
-                    None,
-                    1.3899999856948853,
-                    6.389999866485596,
-                    11.390000343322754,
-                    16.389999389648438,
-                    21.389999389648438,
-                    26.389999389648438,
-                    31.389999389648438,
-                    36.38999938964844,
-                    41.38999938964844,
-                    46.38999938964844,
-                    51.38999938964844,
-                    56.38999938964844,
-                    61.38999938964844,
-                    66.38999938964844,
-                    71.38999938964844,
-                    76.38999938964844,
-                    81.38999938964844,
-                ],
-                dtype=pl.Float32,
-            ),
+            pl.Series("test_case", ["1", "2", "3", "4", "5"]),
+            pl.Series("item", ["A", "A", "B", "B", "B"]),
+            pl.Series("shift", [1, 3, -1, -3, -50]),
         ]
-    )
-    assert lag_one.equals(expected_lag_one)
+    ).with_columns(pl.col(pl.String).cast(pl.Categorical))
 
-    lag_two = df.mathx.shift(2, partition=ts.Grouper().by("catsb")).collect()
+    return result
 
-    expected_lag_two = pl.DataFrame(
-        [
-            pl.Series(
-                "time",
-                [
-                    datetime(2024, 1, 2, 0, 0),
-                    datetime(2024, 1, 4, 0, 0),
-                    datetime(2024, 1, 6, 0, 0),
-                    datetime(2024, 1, 8, 0, 0),
-                    datetime(2024, 1, 10, 0, 0),
-                    datetime(2024, 1, 12, 0, 0),
-                    datetime(2024, 1, 14, 0, 0),
-                    datetime(2024, 1, 16, 0, 0),
-                    datetime(2024, 1, 18, 0, 0),
-                    datetime(2024, 1, 20, 0, 0),
-                    datetime(2024, 1, 22, 0, 0),
-                    datetime(2024, 1, 24, 0, 0),
-                    datetime(2024, 1, 26, 0, 0),
-                    datetime(2024, 1, 28, 0, 0),
-                    datetime(2024, 1, 30, 0, 0),
-                    datetime(2024, 2, 1, 0, 0),
-                    datetime(2024, 2, 3, 0, 0),
-                    datetime(2024, 2, 5, 0, 0),
-                    datetime(2024, 2, 7, 0, 0),
-                    datetime(2024, 2, 9, 0, 0),
-                ],
-                dtype=pl.Datetime(time_unit="us", time_zone=None),
-            ),
-            pl.Series(
-                "text",
-                [
-                    "stext 0",
-                    "stext 5",
-                    "stext 10",
-                    "stext 15",
-                    "stext 20",
-                    "stext 25",
-                    "stext 30",
-                    "stext 35",
-                    "stext 40",
-                    "stext 45",
-                    "stext 50",
-                    "stext 55",
-                    "stext 60",
-                    "stext 65",
-                    "stext 70",
-                    "stext 75",
-                    "stext 80",
-                    "stext 85",
-                    "stext 90",
-                    "stext 95",
-                ],
-                dtype=pl.String,
-            ),
-            pl.Series(
-                "catsa",
-                [
-                    "A0",
-                    "A5",
-                    "A10",
-                    "A15",
-                    "A20",
-                    "A25",
-                    "A30",
-                    "A35",
-                    "A40",
-                    "A45",
-                    "A50",
-                    "A55",
-                    "A60",
-                    "A65",
-                    "A70",
-                    "A75",
-                    "A80",
-                    "A85",
-                    "A90",
-                    "A95",
-                ],
-                dtype=pl.Categorical(ordering="physical"),
-            ),
-            pl.Series(
-                "catsb",
-                [
-                    "B0",
-                    "B2",
-                    "B1",
-                    "B0",
-                    "B2",
-                    "B1",
-                    "B0",
-                    "B2",
-                    "B1",
-                    "B0",
-                    "B2",
-                    "B1",
-                    "B0",
-                    "B2",
-                    "B1",
-                    "B0",
-                    "B2",
-                    "B1",
-                    "B0",
-                    "B2",
-                ],
-                dtype=pl.Categorical(ordering="physical"),
-            ),
-            pl.Series(
-                "flt1",
-                [
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    2.18,
-                    7.18,
-                    12.18,
-                    17.18,
-                    22.18,
-                    27.18,
-                    32.18,
-                    37.18,
-                    42.18,
-                    47.18,
-                    52.18,
-                    57.18,
-                    62.18,
-                    67.18,
-                ],
-                dtype=pl.Float64,
-            ),
-            pl.Series(
-                "flt2",
-                [
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    1.3899999856948853,
-                    6.389999866485596,
-                    11.390000343322754,
-                    16.389999389648438,
-                    21.389999389648438,
-                    26.389999389648438,
-                    31.389999389648438,
-                    36.38999938964844,
-                    41.38999938964844,
-                    46.38999938964844,
-                    51.38999938964844,
-                    56.38999938964844,
-                    61.38999938964844,
-                    66.38999938964844,
-                ],
-                dtype=pl.Float32,
-            ),
-        ]
+
+def test_basic(df, params):
+    result = df.mathx.shift_config(params).sort("test_case").collect()
+
+    expected_result = (
+        pl.DataFrame(
+            [
+                pl.Series(
+                    "time",
+                    [
+                        datetime.date(2024, 1, 2),
+                        datetime.date(2024, 1, 4),
+                        datetime.date(2024, 1, 6),
+                        datetime.date(2024, 1, 8),
+                        datetime.date(2024, 1, 10),
+                        datetime.date(2024, 1, 2),
+                        datetime.date(2024, 1, 4),
+                        datetime.date(2024, 1, 6),
+                        datetime.date(2024, 1, 8),
+                        datetime.date(2024, 1, 10),
+                        datetime.date(2024, 1, 12),
+                        datetime.date(2024, 1, 14),
+                        datetime.date(2024, 1, 16),
+                        datetime.date(2024, 1, 18),
+                        datetime.date(2024, 1, 20),
+                        datetime.date(2024, 1, 12),
+                        datetime.date(2024, 1, 14),
+                        datetime.date(2024, 1, 16),
+                        datetime.date(2024, 1, 18),
+                        datetime.date(2024, 1, 20),
+                        datetime.date(2024, 1, 12),
+                        datetime.date(2024, 1, 14),
+                        datetime.date(2024, 1, 16),
+                        datetime.date(2024, 1, 18),
+                        datetime.date(2024, 1, 20),
+                    ],
+                    dtype=pl.Date,
+                ),
+                pl.Series(
+                    "test_case",
+                    [
+                        "1",
+                        "1",
+                        "1",
+                        "1",
+                        "1",
+                        "2",
+                        "2",
+                        "2",
+                        "2",
+                        "2",
+                        "3",
+                        "3",
+                        "3",
+                        "3",
+                        "3",
+                        "4",
+                        "4",
+                        "4",
+                        "4",
+                        "4",
+                        "5",
+                        "5",
+                        "5",
+                        "5",
+                        "5",
+                    ],
+                    dtype=pl.Categorical(ordering="physical"),
+                ),
+                pl.Series(
+                    "item",
+                    [
+                        "A",
+                        "A",
+                        "A",
+                        "A",
+                        "A",
+                        "A",
+                        "A",
+                        "A",
+                        "A",
+                        "A",
+                        "B",
+                        "B",
+                        "B",
+                        "B",
+                        "B",
+                        "B",
+                        "B",
+                        "B",
+                        "B",
+                        "B",
+                        "B",
+                        "B",
+                        "B",
+                        "B",
+                        "B",
+                    ],
+                    dtype=pl.Categorical(ordering="physical"),
+                ),
+                pl.Series(
+                    "val2",
+                    [
+                        None,
+                        100.0,
+                        200.0,
+                        300.0,
+                        400.0,
+                        None,
+                        None,
+                        None,
+                        100.0,
+                        200.0,
+                        200.0,
+                        300.0,
+                        400.0,
+                        500.0,
+                        None,
+                        400.0,
+                        500.0,
+                        None,
+                        None,
+                        None,
+                        None,
+                        None,
+                        None,
+                        None,
+                        None,
+                    ],
+                    dtype=pl.Float64,
+                ),
+                pl.Series(
+                    "val1",
+                    [
+                        None,
+                        1.0,
+                        2.0,
+                        3.0,
+                        4.0,
+                        None,
+                        None,
+                        None,
+                        1.0,
+                        2.0,
+                        2.0,
+                        3.0,
+                        4.0,
+                        5.0,
+                        None,
+                        4.0,
+                        5.0,
+                        None,
+                        None,
+                        None,
+                        None,
+                        None,
+                        None,
+                        None,
+                        None,
+                    ],
+                    dtype=pl.Float64,
+                ),
+            ]
+        )
+        .with_columns(pl.col("time").cast(pl.Date))
+        .select(result.columns)
     )
 
-    assert lag_two.equals(expected_lag_two)
-
-    lag_default = df.mathx.shift().collect()
-    assert lag_default.equals(lag_one_ignore_nulls)
+    assert_frame_equal(result, expected_result)

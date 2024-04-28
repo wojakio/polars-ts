@@ -28,3 +28,18 @@ def ewm_custom(
         args=[values_expr, alpha, min_periods, adjust],
         is_elementwise=False,
     )
+
+
+def shift_custom(
+    values_expr: IntoExpr,
+    shift: IntoExpr,
+) -> pl.Expr:
+    values_expr = parse_into_expr(values_expr)
+    shift = parse_into_expr(shift).cast(pl.Int64)
+
+    return pl.plugins.register_plugin_function(
+        plugin_path=Path(__file__).parent.parent,
+        function_name="pl_shift_custom",
+        args=[values_expr, shift],
+        is_elementwise=False,
+    )
