@@ -1,11 +1,11 @@
 from typing import Literal
 
 import polars as pl
-from polars.type_aliases import JoinStrategy
 
 from ..expr.mathx import ewm_custom, shift_custom
 from ..sf_helper import impl_fill_null
 from ..grouper import Grouper
+from ..with_params import WithParams
 
 from ..types import FrameType, NullStrategyType, SentinelNumeric
 
@@ -49,43 +49,12 @@ def impl_cum_sum(df: FrameType, partition: Grouper) -> FrameType:
 
 def impl_shift(
     df: FrameType,
-    k: int,
-    null_strategy: NullStrategyType,
-    null_sentinel: SentinelNumeric,
-    partition: Grouper,
-) -> FrameType:
-    grouper_cols = partition.apply(df)
-    numeric_cols = partition.numerics(df)
-
-    result = df.with_columns(pl.col(numeric_cols).shift(k).over(grouper_cols))
-    result = impl_fill_null(result, null_strategy, null_sentinel, partition)
-
-    return result
-
-
-def impl_shift_config(
-    df: FrameType,
     params: FrameType,
     partition: Grouper,
 ) -> FrameType:
-    result_schema = (
-        pl.Series(values=df.columns + Grouper.categories(params, include_time=False))
-        .unique()
-        .to_list()
-    )
+    p = WithParams().optional(shift=pl.Int64).defaults(shift=1)
 
-    default_params = params.select(
-        pl.Series("shift", [1]),
-    )
-
-    missing_params = set(default_params.columns).difference(params.columns)
-    if len(missing_params) > 0:
-        params = params.join(default_params.select(missing_params), how="cross")
-
-    common_cols = Grouper.common_categories(df, params)
-    join_type: JoinStrategy = "cross" if len(common_cols) == 0 else "left"
-    df = df.join(params, on=common_cols, how=join_type)
-
+    df, result_cols = p.apply(df, params)
     grouper_cols = partition.apply(df)
 
     result = df.with_columns(
@@ -93,51 +62,23 @@ def impl_shift_config(
             pl.col(partition.numerics(df)),
             "shift",
         ).over(grouper_cols)
-    ).select(result_schema)
+    ).select(result_cols)
 
     return result
 
 
 def impl_ewm_mean(
     df: FrameType,
-    half_life: float,
-    partition: Grouper,
-) -> FrameType:
-    grouper_cols = partition.apply(df)
-    numeric_cols = partition.numerics(df)
-
-    result = df.with_columns(
-        pl.col(numeric_cols)
-        .ewm_mean(half_life=half_life, ignore_nulls=True, adjust=True)
-        .over(grouper_cols)
-    )
-    return result
-
-
-def impl_ewm_mean_config(
-    df: FrameType,
     params: FrameType,
     partition: Grouper,
 ) -> FrameType:
-    result_schema = (
-        pl.Series(values=df.columns + Grouper.categories(params, include_time=False))
-        .unique()
-        .to_list()
+    p = (
+        WithParams(alpha=pl.Float64)
+        .optional(min_periods=pl.Int64, adjust=pl.Boolean)
+        .defaults(min_periods=0, adjust=False)
     )
 
-    default_params = params.select(
-        pl.Series("min_periods", [0]),
-        pl.Series("adjust", [False]),
-    )
-
-    missing_params = set(default_params.columns).difference(params.columns)
-    if len(missing_params) > 0:
-        params = params.join(default_params.select(missing_params), how="cross")
-
-    common_cols = Grouper.common_categories(df, params)
-    join_type: JoinStrategy = "cross" if len(common_cols) == 0 else "left"
-    df = df.join(params, on=common_cols, how=join_type)
-
+    df, result_cols = p.apply(df, params)
     grouper_cols = partition.apply(df)
 
     result = df.with_columns(
@@ -147,6 +88,6 @@ def impl_ewm_mean_config(
             "min_periods",
             "adjust",
         ).over(grouper_cols)
-    ).select(result_schema)
+    ).select(result_cols)
 
     return result

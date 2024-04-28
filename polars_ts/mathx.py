@@ -10,10 +10,8 @@ from .sf_helper import prepare_result
 from .mathx_helper import (
     impl_diff,
     impl_cum_sum,
-    impl_shift,
     impl_ewm_mean,
-    impl_ewm_mean_config,
-    impl_shift_config,
+    impl_shift,
 )
 
 from .types import FrameType, NullStrategyType, SentinelNumeric
@@ -39,39 +37,20 @@ class MathxFrame(SeriesFrame, Generic[FrameType]):
 
     def cum_sum(self, partition: Grouper = Grouper().by_all()) -> FrameType:
         df = impl_cum_sum(self._df, partition)
-
         return prepare_result(df)
 
     def shift(
         self,
-        k: int = 1,
-        null_strategy: NullStrategyType = "ignore",
-        null_sentinel: SentinelNumeric = 0.0,
-        partition: Grouper = Grouper().by_all(),
-    ) -> FrameType:
-        df = impl_shift(self._df, k, null_strategy, null_sentinel, partition)
-        return prepare_result(df)
-
-    def shift_config(
-        self,
         params: FrameType,
         partition: Grouper = Grouper().by_all(),
     ) -> FrameType:
-        df = impl_shift_config(self._df, params, partition)
+        df = impl_shift(self._df, params, partition)
         return prepare_result(df)
 
     def ewm_mean(
         self,
-        alpha: float,
-        partition: Grouper = Grouper().by_all(),
-    ) -> FrameType:
-        df = impl_ewm_mean(self._df, alpha, partition)
-        return prepare_result(df)
-
-    def ewm_mean_config(
-        self,
         params: FrameType,
         partition: Grouper = Grouper().by_all_and("alpha"),
     ) -> FrameType:
-        df = impl_ewm_mean_config(self._df, params, partition)
+        df = impl_ewm_mean(self._df, params, partition)
         return prepare_result(df)

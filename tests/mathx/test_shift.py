@@ -46,7 +46,7 @@ def params() -> pl.LazyFrame:
 
 
 def test_basic(df, params):
-    result = df.mathx.shift_config(params).sort("test_case").collect()
+    result = df.mathx.shift(params).sort("test_case").collect()
 
     expected_result = (
         pl.DataFrame(
