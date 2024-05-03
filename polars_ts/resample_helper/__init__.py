@@ -1,11 +1,10 @@
 import polars as pl
 
-from ..sf_helper import impl_fill_null
+from ..sf_helper import impl_handle_null
 from ..grouper import Grouper
 
 from ..types import (
     IntervalType,
-    NullStrategyType,
     RetainValuesType,
     FrameType,
     SentinelNumeric,
@@ -17,8 +16,8 @@ def impl_align_to_time(
     time_axis: pl.Series,
     partition: Grouper,
     closed: IntervalType,
-    null_strategy: NullStrategyType,
-    null_sentinel: SentinelNumeric,
+    null_strategy: str,
+    null_param_1: SentinelNumeric,
 ) -> FrameType:
     resampled = impl_resample_categories(df, time_axis, partition, closed)
     realigned = impl_align_values(
@@ -27,7 +26,7 @@ def impl_align_to_time(
         partition,
         retain_values="lhs",
         null_strategy=null_strategy,
-        null_sentinel=null_sentinel,
+        null_param_1=null_param_1,
     )
 
     return realigned
@@ -74,8 +73,8 @@ def impl_align_values(
     rhs: FrameType,
     partition: Grouper,
     retain_values: RetainValuesType,
-    null_strategy: NullStrategyType,
-    null_sentinel: SentinelNumeric,
+    null_strategy: str,
+    null_param_1: SentinelNumeric,
 ) -> FrameType:
     rhs_cat_cols = Grouper.categories(rhs, include_time=True)
     rhs_grid = rhs.select(rhs_cat_cols)
@@ -98,7 +97,12 @@ def impl_align_values(
         .unique(keep="first", maintain_order=True)
     )
 
-    result = impl_fill_null(result, null_strategy, null_sentinel, partition)
+    null_params = lhs.select(
+        null_strategy=pl.lit(null_strategy).cast(pl.Categorical),
+        null_param_1=pl.lit(null_param_1).cast(pl.Float64),
+    )
+
+    result = impl_handle_null(result, null_params, partition)
 
     result = result.join(rhs_grid, on=rhs_cat_cols, how="inner")
 

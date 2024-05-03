@@ -114,9 +114,9 @@ class Grouper:
         return cols
 
     @staticmethod
-    def values(df: FrameType) -> List[str]:
+    def values(df: FrameType, exclude: List[str]) -> List[str]:
         cats = set(Grouper.categories(df, include_time=True))
-        cols = set(df.columns).difference(cats)
+        cols = set(df.columns).difference(cats).difference(exclude)
         return sorted(cols)
 
     @staticmethod

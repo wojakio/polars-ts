@@ -244,6 +244,69 @@ fn pl_diff_custom(inputs: &[Series]) -> PolarsResult<Series> {
     }
 }
 
+#[polars_expr(output_type_func=same_output_type)]
+fn pl_handle_null_custom(inputs: &[Series]) -> PolarsResult<Series> {
+    let values = &inputs[0];
+    let null_strategy = inputs[1].str()?.get(0).unwrap();
+    // let arg_1 = inputs[2].f64()?.get(0).unwrap();
+
+    // dbg!(&null_strategy);
+    // dbg!(&arg_1);
+    // dbg!(&values);
+
+    let mut result = values.clone();
+    match null_strategy {
+        "sentinel" => {
+            let sentinel = inputs[2].f64()?.get(0).unwrap();
+            result = result.f64()?.fill_null_with_values(sentinel)?.into_series();
+        }
+        "trim_start_n" => {
+            let input_len = &values.len();
+            let n = inputs[2].i64()?.get(0).unwrap();
+            let result_len = input_len - (n as usize);
+            result = result.slice(n, result_len);
+        }
+        "trim_end_n" => {
+            let input_len = &values.len();
+            let n = inputs[2].i64()?.get(0).unwrap();
+            let result_len = input_len - (n as usize);
+            result = result.slice(0, result_len);
+        }
+        "drop" => {
+            result = result.drop_nulls();
+        }
+        "forward" => {
+            result = result.fill_null(FillNullStrategy::Forward(None))?;
+        }
+        "backward" => {
+            result = result.fill_null(FillNullStrategy::Backward(None))?;
+        }
+        "interpolate_linear" => {
+            dbg!("todo interpolate_linear");
+        }
+        "interpolate_nearest" => {
+            dbg!("todo interpolate_nearest");
+        }
+        "min" => {
+            result = result.fill_null(FillNullStrategy::Min)?;
+        }
+        "max" => {
+            result = result.fill_null(FillNullStrategy::Max)?;
+        }
+        "mean" => {
+            result = result.fill_null(FillNullStrategy::Mean)?;
+        }
+        "ignore" => {
+            result = values.clone();
+        }
+        _ => {
+            panic!("unknown null_strategy: `{:?}`", null_strategy)
+        }
+    }
+
+    Ok(result)
+}
+
 #[cfg(test)]
 mod test {
     use polars::prelude::*;

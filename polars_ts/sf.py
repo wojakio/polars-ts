@@ -5,14 +5,14 @@ from polars.type_aliases import IntoExpr, JoinStrategy
 
 from .grouper import Grouper
 from .sf_helper import (
-    impl_fill_null,
+    impl_handle_null,
     impl_join,
     impl_join_on_list_items,
     impl_unique,
     prepare_result,
     RESERVED_ALL_GRP,
 )
-from .types import FrameType, NullStrategyType, SentinelNumeric
+from .types import FrameType
 from .utils import parse_into_expr
 
 __NAMESPACE = "sf"
@@ -38,13 +38,12 @@ class SeriesFrame(Generic[FrameType]):
         df = impl_unique(self._df, grouper)
         return prepare_result(df)
 
-    def fill_null(
+    def handle_null(
         self,
-        null_strategy: NullStrategyType,
-        null_sentinel: SentinelNumeric,
-        partition: Grouper,
+        params: FrameType,
+        partition: Grouper = Grouper.by_all(),
     ) -> FrameType:
-        df = impl_fill_null(self._df, null_strategy, null_sentinel, partition)
+        df = impl_handle_null(self._df, params, partition)
         return prepare_result(df)
 
     def join_on_list_items(

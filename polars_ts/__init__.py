@@ -20,6 +20,7 @@ from .futures import *
 from .dummymkt import *
 
 from .grouper import Grouper  # noqa
+from .expr import *
 
 pl.enable_string_cache()
 

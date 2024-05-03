@@ -12,7 +12,7 @@ from .resample_helper import (
 
 from .grouper import Grouper
 from .tsf import TimeSeriesFrame
-from .types import IntervalType, NullStrategyType, FrameType, SentinelNumeric
+from .types import IntervalType, FrameType, SentinelNumeric
 
 __NAMESPACE = "rs"
 
@@ -49,11 +49,11 @@ class ResampleFrame(TimeSeriesFrame, Generic[FrameType]):
         time_axis: pl.Series,
         partition: Grouper = Grouper.by_all(),
         closed: IntervalType = "left",
-        null_strategy: NullStrategyType = "forward",
-        null_sentinel: SentinelNumeric = 0.0,
+        null_strategy: str = "forward",
+        null_param_1: SentinelNumeric = 0.0,
     ) -> FrameType:
         df = impl_align_to_time(
-            self._df, time_axis, partition, closed, null_strategy, null_sentinel
+            self._df, time_axis, partition, closed, null_strategy, null_param_1
         )
 
         return prepare_result(df)
@@ -73,8 +73,8 @@ class ResampleFrame(TimeSeriesFrame, Generic[FrameType]):
         rhs: FrameType,
         partition: Grouper = Grouper.by_all(),
         retain_values: Literal["lhs", "rhs", "both"] = "lhs",
-        null_strategy: NullStrategyType = "forward",
-        null_sentinel: SentinelNumeric = 0.0,
+        null_strategy: str = "forward",
+        null_param_1: SentinelNumeric = 0.0,
     ) -> FrameType:
         df = impl_align_values(
             self._df,
@@ -82,7 +82,7 @@ class ResampleFrame(TimeSeriesFrame, Generic[FrameType]):
             partition,
             retain_values,
             null_strategy,
-            null_sentinel,
+            null_param_1,
         )
 
         return prepare_result(df)

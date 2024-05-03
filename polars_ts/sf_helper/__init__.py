@@ -1,8 +1,10 @@
 import polars as pl
 from polars.type_aliases import JoinStrategy
 
-from ..types import FrameType, NullStrategyType, SentinelNumeric
+from ..types import FrameType
 from ..grouper import Grouper
+from ..param_schema import ParamSchema
+from ..expr.sf import handle_null_custom
 
 RESERVED_COL_PREFIX = "##@_"
 RESERVED_COL_REGEX = "^##@_.*$"
@@ -15,48 +17,44 @@ def prepare_result(df: FrameType) -> FrameType:
     return df.select(pl.exclude(RESERVED_COL_REGEX))
 
 
-def impl_fill_null(
+def impl_handle_null(
     df: FrameType,
-    null_strategy: NullStrategyType,
-    null_sentinel: SentinelNumeric,
+    params: FrameType,
     partition: Grouper,
 ) -> FrameType:
+    p = (
+        ParamSchema()
+        .optional(
+            null_strategy=pl.Categorical,
+            null_param_1=pl.NUMERIC_DTYPES,
+        )
+        .defaults(null_strategy="ignore", null_param_1=None)
+    )
+
+    df, result_cols = p.apply(df, params)
     grouper_cols = partition.apply(df)
+    numeric_cols = partition.numerics(df, exclude=p.names())
+    value_cols = partition.values(df, exclude=p.names())
 
-    if null_strategy == "sentinel":
-        result = df.with_columns(pl.col(pl.NUMERIC_DTYPES).fill_null(null_sentinel))
+    # print("result_cols: ", result_cols)
+    # print("grouper_cols:", grouper_cols)
+    # print("numeric_cols:", numeric_cols)
+    # print("value_cols", value_cols)
+    # print(df.collect())
+    # print(params.collect())
+    explode_cols = value_cols
+    if "time" not in grouper_cols and "time" in df.columns:
+        explode_cols.append("time")
 
-    elif null_strategy == "forward":
-        result = df.with_columns(pl.exclude("time").forward_fill().over(grouper_cols))
-
-    elif null_strategy == "backward":
-        result = df.with_columns(pl.exclude("time").backward_fill().over(grouper_cols))
-
-    elif null_strategy == "interpolate_linear":
-        result = df.with_columns(
-            pl.exclude("time").interpolate(method="linear").over(grouper_cols)
+    result = (
+        df.group_by(grouper_cols, maintain_order=True)
+        .agg(
+            pl.exclude(numeric_cols),
+            handle_null_custom(pl.col(numeric_cols), "null_strategy", "null_param_1"),
         )
-
-    elif null_strategy == "interpolate_nearest":
-        result = df.with_columns(
-            pl.exclude("time").interpolate(method="nearest").over(grouper_cols)
-        )
-
-    elif null_strategy == "min":
-        result = df.with_columns(pl.exclude("time").min().over(grouper_cols))
-
-    elif null_strategy == "max":
-        result = df.with_columns(pl.exclude("time").max().over(grouper_cols))
-
-    elif null_strategy == "mean":
-        result = df.with_columns(pl.exclude("time").mean().over(grouper_cols))
-
-    elif null_strategy == "ignore":
-        result = df
-
-    elif null_strategy == "drop":
-        cols = set(df.columns).difference(["time"] + grouper_cols)
-        result = df.drop_nulls(subset=cols)
+        .select(result_cols)
+        .explode(explode_cols)
+    )
 
     return result
 

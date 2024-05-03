@@ -34,7 +34,7 @@ def df() -> pl.LazyFrame:
 
 def test_join(df):
     g = Grouper()
-    value_cols = g.values(df)
+    value_cols = g.values(df, exclude=[])
 
     self_join = df.sf.join(df).collect()
     expected_self_join = df.with_columns(
