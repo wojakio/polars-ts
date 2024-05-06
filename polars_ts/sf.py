@@ -1,4 +1,4 @@
-from typing import Generic
+from typing import Any, Generic, Optional
 
 import polars as pl
 from polars.type_aliases import IntoExpr, JoinStrategy
@@ -9,6 +9,7 @@ from .sf_helper import (
     impl_join,
     impl_join_on_list_items,
     impl_unique,
+    prepare_params,
     prepare_result,
     RESERVED_ALL_GRP,
 )
@@ -40,10 +41,14 @@ class SeriesFrame(Generic[FrameType]):
 
     def handle_null(
         self,
-        params: FrameType,
         partition: Grouper = Grouper.by_all(),
+        *,
+        null_strategy: str = 'ignore',
+        null_param_1: Any = None,
+        params: Optional[FrameType] = None,
     ) -> FrameType:
-        df = impl_handle_null(self._df, params, partition)
+        params = prepare_params(self._df, params, null_strategy=null_strategy, null_param_1=null_param_1)
+        df = impl_handle_null(self._df, partition, params)
         return prepare_result(df)
 
     def join_on_list_items(

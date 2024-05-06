@@ -50,7 +50,7 @@ def df():
 
 
 def test_basic(df, params):
-    result_df = df.mathx.diff(params).collect()
+    result_df = df.mathx.diff(params=params).collect()
     # print(result_df.to_init_repr())
 
     expected_df = pl.DataFrame(

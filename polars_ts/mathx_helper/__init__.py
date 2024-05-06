@@ -11,18 +11,18 @@ from ..types import FrameType
 
 def impl_diff(
     df: FrameType,
-    params: FrameType,
     partition: Grouper,
+    params: FrameType,
 ) -> FrameType:
     p = (
         ParamSchema()
         .optional(
             n=pl.Int64,
             method=pl.Categorical,
-            null_strategy=pl.String,
+            null_strategy=pl.Categorical,
             null_param_1=pl.Float64,
         )
-        .defaults(n=1, method="arithmetic", null_strategy="drop", null_param_1=None)
+        .defaults(n=1, method="arithmetic", null_strategy="ignore", null_param_1=None)
     )
 
     df, result_cols = p.apply(df, params)
@@ -57,8 +57,8 @@ def impl_cum_sum(df: FrameType, partition: Grouper) -> FrameType:
 
 def impl_shift(
     df: FrameType,
-    params: FrameType,
     partition: Grouper,
+    params: FrameType,
 ) -> FrameType:
     p = ParamSchema(n=pl.Int64)
 
@@ -78,8 +78,8 @@ def impl_shift(
 
 def impl_ewm_mean(
     df: FrameType,
-    params: FrameType,
     partition: Grouper,
+    params: FrameType,
 ) -> FrameType:
     p = (
         ParamSchema(alpha=pl.Float64)

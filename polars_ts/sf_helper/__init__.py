@@ -1,3 +1,5 @@
+from typing import Optional
+
 import polars as pl
 from polars.type_aliases import JoinStrategy
 
@@ -16,11 +18,27 @@ RESERVED_DELIMITER = "##@"
 def prepare_result(df: FrameType) -> FrameType:
     return df.select(pl.exclude(RESERVED_COL_REGEX))
 
+def prepare_params(
+    df: FrameType,
+    params: Optional[FrameType],
+    **kwargs
+) -> FrameType:
+    if params is None:
+        params = df.clear().select()
+
+    params = params.with_columns([
+        pl.lit(value).alias(name)
+        for name, value in kwargs.items()
+        if name not in params.columns
+    ])
+
+    return params
+
 
 def impl_handle_null(
     df: FrameType,
-    params: FrameType,
     partition: Grouper,
+    params: FrameType,
 ) -> FrameType:
     p = (
         ParamSchema()
@@ -29,6 +47,7 @@ def impl_handle_null(
             null_param_1=pl.NUMERIC_DTYPES,
         )
         .defaults(null_strategy="ignore", null_param_1=None)
+        .allow_additional_params()
     )
 
     df, result_cols = p.apply(df, params)
@@ -36,12 +55,6 @@ def impl_handle_null(
     numeric_cols = partition.numerics(df, exclude=p.names())
     value_cols = partition.values(df, exclude=p.names())
 
-    # print("result_cols: ", result_cols)
-    # print("grouper_cols:", grouper_cols)
-    # print("numeric_cols:", numeric_cols)
-    # print("value_cols", value_cols)
-    # print(df.collect())
-    # print(params.collect())
     explode_cols = value_cols
     if "time" not in grouper_cols and "time" in df.columns:
         explode_cols.append("time")

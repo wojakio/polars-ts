@@ -1,12 +1,11 @@
-from typing import Generic
+from typing import Any, Generic, Optional
 
 import polars as pl
 
 from .grouper import Grouper
-from .frame_builder import FrameBuilder
 
-from .sf import SeriesFrame
-from .sf_helper import prepare_result
+from .sf import SeriesFrame, impl_handle_null
+from .sf_helper import prepare_params, prepare_result
 
 from .mathx_helper import (
     impl_diff,
@@ -25,31 +24,26 @@ class MathxFrame(SeriesFrame, Generic[FrameType]):
     def __init__(self, df: FrameType):
         super().__init__(df)
 
-    # this didnt work
-    # cant unify type of params with FrameBuilder
-    # troublesome to pass framebuilder as an arg
-    # def diff(
-    #     self,
-    #     partition: Grouper = Grouper.by_all_and("n"),
-    #     params: FrameType = FrameBuilder(
-    #         n=1, method="arithmetic", null_strategy="trim_head_n", null_param_1=1
-    #     ).to_frame(),
-    # ) -> FrameType:
-    #     df = impl_diff(self._df, params, partition)
-    #     # df = impl_handle_null(df, params, partition)
-    #     return prepare_result(df)
-
-    # try kwargs as params
-    # and a special kwargs called params which overrides all single value params
-
-
     def diff(
         self,
-        params: FrameType,
         partition: Grouper = Grouper.by_all_and("n"),
+        *,
+        n: int = 1,
+        method: str = 'arithmetic',
+        null_strategy: str = 'ignore',
+        null_param_1: Any = None,
+        params: Optional[FrameType] = None,
     ) -> FrameType:
-        df = impl_diff(self._df, params, partition)
-        # df = impl_handle_null(df, params, partition)
+        params = prepare_params(
+            self._df,
+            params,
+            n=n,
+            method=method,
+            null_strategy=null_strategy,
+            null_param_1=null_param_1,
+        )
+        df = impl_diff(self._df, partition, params)
+        # df = impl_handle_null(df, partition, params)
         return prepare_result(df)
 
     def cum_sum(self, partition: Grouper = Grouper.by_all()) -> FrameType:
@@ -58,16 +52,45 @@ class MathxFrame(SeriesFrame, Generic[FrameType]):
 
     def shift(
         self,
-        params: FrameType,
         partition: Grouper = Grouper.by_all_and("n"),
+        *,
+        n: int = 1,
+        null_strategy: str = 'ignore',
+        null_param_1: Any = None,
+        params: Optional[FrameType] = None,
     ) -> FrameType:
-        df = impl_shift(self._df, params, partition)
+        params = prepare_params(
+            self._df,
+            params,
+            n=n,
+            null_strategy=null_strategy,
+            null_param_1=null_param_1,
+        )
+
+        df = impl_shift(self._df, partition, params)
         return prepare_result(df)
+
 
     def ewm_mean(
         self,
-        params: FrameType,
         partition: Grouper = Grouper.by_all_and("alpha"),
+        *,
+        alpha: float = 0.5,
+        min_periods: int = 0,
+        adjust: bool = False,
+        null_strategy: str = 'ignore',
+        null_param_1: Any = None,
+        params: Optional[FrameType] = None,
     ) -> FrameType:
-        df = impl_ewm_mean(self._df, params, partition)
+        params = prepare_params(
+            self._df,
+            params,
+            alpha=alpha,
+            min_periods=min_periods,
+            adjust=adjust,
+            null_strategy=null_strategy,
+            null_param_1=null_param_1,
+        )
+
+        df = impl_ewm_mean(self._df, partition, params)
         return prepare_result(df)

@@ -102,7 +102,7 @@ def impl_align_values(
         null_param_1=pl.lit(null_param_1).cast(pl.Float64),
     )
 
-    result = impl_handle_null(result, null_params, partition)
+    result = impl_handle_null(result, partition, null_params)
 
     result = result.join(rhs_grid, on=rhs_cat_cols, how="inner")
 

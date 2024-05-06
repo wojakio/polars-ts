@@ -48,7 +48,7 @@ def params() -> pl.LazyFrame:
 
 
 def test_basic(df, params):
-    result = df.mathx.ewm_mean(params).collect()
+    result = df.mathx.ewm_mean(params=params).collect()
     # print(result.to_init_repr())
 
     expected_result = (

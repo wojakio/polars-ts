@@ -12,6 +12,12 @@ class ParamSchema:
         self._required_schema: Dict[str, pl.DataType] = required
         self._optional_schema: Dict[str, pl.DataType] = dict()
         self._defaults: Dict[str, Any] = dict()
+        self._allow_additional_params: bool = False
+
+
+    def allow_additional_params(self) -> "ParamSchema":
+        self._allow_additional_params = True
+        return self
 
     def optional(self, **kwargs: Any) -> "ParamSchema":
         bad_params = set(self._required_schema.keys()).intersection(kwargs.keys())
