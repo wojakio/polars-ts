@@ -41,30 +41,28 @@ def impl_handle_null(
     partition: Grouper,
     params: FrameType,
 ) -> FrameType:
-    p = (
-        ParamSchema()
-        .optional(
-            null_strategy=pl.Categorical,
-            null_param_1=pl.NUMERIC_DTYPES,
-        )
-        .defaults(null_strategy="ignore", null_param_1=None)
-        .allow_additional_params()
+    ps = ParamSchema(
+        [
+            ("null", "null_strategy", pl.Categorical, "ignore"),
+            ("null", "null_param_1", pl.Float64, None),
+        ]
     )
 
-    df, result_cols = p.apply(df, params)
+    df, _params, result_cols = ps.apply("null", df, params)
     grouper_cols = partition.apply(df)
-    numeric_cols = partition.numerics(df, exclude=p.names())
-    # value_cols = partition.values(df, exclude=p.names())
+    # numeric_cols = partition.numerics(df, exclude=ps.names("*", invert=False))
+    value_cols = partition.values(df, exclude=ps.names("*", invert=False))
 
     explode_cols = set(result_cols).difference(grouper_cols)
 
     result = (
         df.group_by(grouper_cols, maintain_order=True)
         .agg(
-            pl.exclude(numeric_cols),
-            handle_null_custom(pl.col(numeric_cols), "null_strategy", "null_param_1"),
+            pl.exclude(value_cols),
+            handle_null_custom(pl.col(value_cols), "null_strategy", "null_param_1"),
         )
         .select(result_cols)
+        # .with_columns(pl.col(explode_cols).list.lengths().name.prefix('len_'))
         .explode(*explode_cols)
     )
 

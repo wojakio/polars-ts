@@ -106,6 +106,17 @@ class Grouper:
         return sorted(cols)
 
     @staticmethod
+    def common_values(
+        lhs: FrameType, rhs: FrameType, include_time: bool = False
+    ) -> List[str]:
+        exclude = [] if include_time else ["time"]
+        vals_lhs = Grouper.values(lhs, exclude=exclude)
+        vals_rhs = Grouper.values(rhs, exclude=exclude)
+        cols = set(vals_lhs).intersection(vals_rhs)
+
+        return sorted(cols)
+
+    @staticmethod
     def categories(df: FrameType, include_time: bool) -> List[str]:
         cols = df.select(pl.col(pl.Categorical, pl.Enum)).columns
         if include_time:

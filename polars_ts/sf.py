@@ -51,7 +51,7 @@ class SeriesFrame(Generic[FrameType]):
             self._df,
             params,
             null_strategy=(null_strategy, pl.Categorical),
-            null_param_1=(null_param_1, pl.NUMERIC_DTYPES),
+            null_param_1=(null_param_1, pl.Float64),
         )
         df = impl_handle_null(self._df, partition, params)
         return prepare_result(df)

@@ -26,7 +26,7 @@ class MathxFrame(SeriesFrame, Generic[FrameType]):
 
     def diff(
         self,
-        partition: Grouper = Grouper.by_all_and("n"),
+        partition: Grouper = Grouper.by_all(),
         *,
         n: int = 1,
         method: str = "arithmetic",
@@ -40,10 +40,9 @@ class MathxFrame(SeriesFrame, Generic[FrameType]):
             n=(n, pl.NUMERIC_DTYPES),
             method=(method, pl.Categorical),
             null_strategy=(null_strategy, pl.Categorical),
-            null_param_1=(null_param_1, pl.NUMERIC_DTYPES),
+            null_param_1=(null_param_1, pl.Float64),
         )
         df = impl_diff(self._df, partition, params)
-        # df = impl_handle_null(df, partition, params)
         return prepare_result(df)
 
     def cum_sum(self, partition: Grouper = Grouper.by_all()) -> FrameType:
@@ -64,7 +63,7 @@ class MathxFrame(SeriesFrame, Generic[FrameType]):
             params,
             n=(n, pl.NUMERIC_DTYPES),
             null_strategy=(null_strategy, pl.Categorical),
-            null_param_1=(null_param_1, pl.NUMERIC_DTYPES),
+            null_param_1=(null_param_1, pl.Float64),
         )
 
         df = impl_shift(self._df, partition, params)
@@ -88,7 +87,7 @@ class MathxFrame(SeriesFrame, Generic[FrameType]):
             min_periods=(min_periods, pl.Int64),
             adjust=(adjust, pl.Categorical),
             null_strategy=(null_strategy, pl.Categorical),
-            null_param_1=(null_param_1, pl.NUMERIC_DTYPES),
+            null_param_1=(null_param_1, pl.Float64),
         )
 
         df = impl_ewm_mean(self._df, partition, params)

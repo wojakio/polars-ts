@@ -248,7 +248,6 @@ fn pl_diff_custom(inputs: &[Series]) -> PolarsResult<Series> {
 fn pl_handle_null_custom(inputs: &[Series]) -> PolarsResult<Series> {
     let values = &inputs[0];
     let null_strategy = inputs[1].str()?.get(0).unwrap();
-    // let arg_1 = inputs[2].f64()?.get(0).unwrap();
 
     // dbg!(&null_strategy);
     // dbg!(&arg_1);
@@ -262,13 +261,13 @@ fn pl_handle_null_custom(inputs: &[Series]) -> PolarsResult<Series> {
         }
         "trim_start_n" => {
             let input_len = &values.len();
-            let n = inputs[2].i64()?.get(0).unwrap();
+            let n = inputs[2].cast(&DataType::Int64)?.i64()?.get(0).unwrap();
             let result_len = input_len - (n as usize);
             result = result.slice(n, result_len);
         }
         "trim_end_n" => {
             let input_len = &values.len();
-            let n = inputs[2].i64()?.get(0).unwrap();
+            let n = inputs[2].cast(&DataType::Int64)?.i64()?.get(0).unwrap();
             let result_len = input_len - (n as usize);
             result = result.slice(0, result_len);
         }

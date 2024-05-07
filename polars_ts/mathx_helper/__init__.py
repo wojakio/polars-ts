@@ -2,7 +2,7 @@ import polars as pl
 
 from ..expr.mathx import diff_custom, ewm_custom, shift_custom
 
-# from ..sf_helper import impl_fill_null
+from ..sf_helper import impl_handle_null
 from ..grouper import Grouper
 from ..param_schema import ParamSchema
 
@@ -14,23 +14,21 @@ def impl_diff(
     partition: Grouper,
     params: FrameType,
 ) -> FrameType:
-    p = (
-        ParamSchema()
-        .optional(
-            n=pl.Int64,
-            method=pl.Categorical,
-            null_strategy=pl.Categorical,
-            null_param_1=pl.Float64,
-        )
-        .defaults(n=1, method="arithmetic", null_strategy="ignore", null_param_1=None)
+    ps = ParamSchema(
+        [
+            ("diff", "n", pl.Int64, 1),
+            ("diff", "method", pl.Categorical, "arithmetic"),
+            ("null", "null_strategy", pl.Categorical, "ignore"),
+            ("null", "null_param_1", pl.Float64, None),
+        ]
     )
 
-    df, result_cols = p.apply(df, params)
+    df_fn, _params, result_cols = ps.apply("diff", df, params)
 
-    grouper_cols = partition.apply(df)
-    numeric_cols = partition.numerics(df, exclude=p.names())
+    grouper_cols = partition.apply(df_fn)
+    numeric_cols = partition.numerics(df_fn, exclude=ps.names("*", invert=False))
 
-    result = df.with_columns(
+    df_fn_result = df_fn.with_columns(
         diff_custom(
             pl.col(numeric_cols),
             "n",
@@ -38,13 +36,16 @@ def impl_diff(
         ).over(grouper_cols)
     ).select(result_cols)
 
-    return result
+    _df_null, null_params, result_cols = ps.apply("null", df_fn_result, params)
+    df_null_result = impl_handle_null(df_fn_result, partition, null_params)
+
+    return df_null_result
 
 
 def impl_cum_sum(df: FrameType, partition: Grouper) -> FrameType:
-    p = ParamSchema()
+    p = ParamSchema([])
     grouper_cols = partition.apply(df)
-    numeric_cols = partition.numerics(df, exclude=p.names())
+    numeric_cols = partition.numerics(df, exclude=p.names("*", invert=False))
 
     result = df.with_columns(pl.col(numeric_cols).cum_sum().over(grouper_cols))
 
@@ -56,18 +57,17 @@ def impl_shift(
     partition: Grouper,
     params: FrameType,
 ) -> FrameType:
-    p = (
-        ParamSchema(n=pl.Int64)
-        .optional(
-            null_strategy=pl.Categorical,
-            null_param_1=pl.NUMERIC_DTYPES,
-        )
-        .defaults(null_strategy="ignore", null_param_1=None)
+    ps = ParamSchema(
+        [
+            ("shift", "n", pl.Int64, 1),
+            ("null", "null_strategy", pl.Categorical, "ignore"),
+            ("null", "null_param_1", pl.Float64, None),
+        ]
     )
 
-    df, result_cols = p.apply(df, params)
+    df, params, result_cols = ps.apply("shift", df, params)
     grouper_cols = partition.apply(df)
-    numeric_cols = partition.numerics(df, exclude=p.names())
+    numeric_cols = partition.numerics(df, exclude=ps.names("*", invert=False))
 
     result = df.with_columns(
         shift_custom(
@@ -84,22 +84,19 @@ def impl_ewm_mean(
     partition: Grouper,
     params: FrameType,
 ) -> FrameType:
-    p = (
-        ParamSchema(alpha=pl.Float64)
-        .optional(
-            min_periods=pl.Int64,
-            adjust=pl.Boolean,
-            null_strategy=pl.Categorical,
-            null_param_1=pl.NUMERIC_DTYPES,
-        )
-        .defaults(
-            min_periods=0, adjust=False, null_strategy="ignore", null_param_1=None
-        )
+    ps = ParamSchema(
+        [
+            ("ewm", "alpha", pl.Float64, 0.5),
+            ("ewm", "min_periods", pl.Int64, 0),
+            ("ewm", "adjust", pl.Int64, 0),
+            ("null", "null_strategy", pl.Categorical, "ignore"),
+            ("null", "null_param_1", pl.Float64, None),
+        ]
     )
 
-    df, result_cols = p.apply(df, params)
+    df, ewm_params, result_cols = ps.apply("ewm", df, params)
     grouper_cols = partition.apply(df)
-    numeric_cols = partition.numerics(df, exclude=p.names())
+    numeric_cols = partition.numerics(df, exclude=ps.names("*", invert=False))
 
     result = df.with_columns(
         ewm_custom(

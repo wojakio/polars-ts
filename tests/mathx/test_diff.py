@@ -324,3 +324,62 @@ def test_basic_params(df, params):
     )
 
     assert_frame_equal(result_df, expected_df)
+
+
+def test_multi_param_no_categories():
+    df = pl.LazyFrame(
+        [
+            pl.Series("X", ["u"] * 4 + ["v"] * 4, dtype=pl.Categorical),
+            pl.Series("value", list(range(0, 4)) + list(range(0, 4)), dtype=pl.Int64),
+        ]
+    )
+
+    params = pl.LazyFrame(
+        [
+            pl.Series("a", ["diff_1", "diff_2"], dtype=pl.Categorical),
+            pl.Series("n", [1, 2], dtype=pl.Int64),
+            pl.Series("null_strategy", ["drop", "ignore"], dtype=pl.Categorical),
+        ]
+    )
+
+    with pytest.raises(ValueError, match="multiple params without any categories"):
+        (df.mathx.diff(params=params.drop("a")).collect())
+
+    result_df = df.mathx.diff(params=params).collect()
+
+    # print(result_df.to_init_repr())
+    expected_df = pl.DataFrame(
+        [
+            pl.Series(
+                "X",
+                ["u", "u", "u", "u", "u", "u", "u", "v", "v", "v", "v", "v", "v", "v"],
+                dtype=pl.Categorical(ordering="physical"),
+            ),
+            pl.Series(
+                "value",
+                [1, 1, 1, None, None, 2, 2, 1, 1, 1, None, None, 2, 2],
+                dtype=pl.Int64,
+            ),
+            pl.Series(
+                "a",
+                [
+                    "diff_1",
+                    "diff_1",
+                    "diff_1",
+                    "diff_2",
+                    "diff_2",
+                    "diff_2",
+                    "diff_2",
+                    "diff_1",
+                    "diff_1",
+                    "diff_1",
+                    "diff_2",
+                    "diff_2",
+                    "diff_2",
+                    "diff_2",
+                ],
+                dtype=pl.Categorical(ordering="physical"),
+            ),
+        ]
+    )
+    assert_frame_equal(result_df, expected_df)
