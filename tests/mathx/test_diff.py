@@ -49,7 +49,164 @@ def df():
     return result
 
 
-def test_basic(df, params):
+def test_basic_args_with_param(df) -> None:
+    # with a param column
+    result_df = df.mathx.diff(n=1, null_strategy="ignore").collect()
+    expected_df = pl.DataFrame(
+        [
+            pl.Series(
+                "time",
+                [
+                    datetime.date(2024, 1, 2),
+                    datetime.date(2024, 1, 3),
+                    datetime.date(2024, 1, 4),
+                    datetime.date(2024, 1, 5),
+                    datetime.date(2024, 1, 6),
+                    datetime.date(2024, 1, 7),
+                    datetime.date(2024, 1, 8),
+                    datetime.date(2024, 1, 9),
+                    datetime.date(2024, 1, 10),
+                    datetime.date(2024, 1, 11),
+                    datetime.date(2024, 1, 2),
+                    datetime.date(2024, 1, 3),
+                    datetime.date(2024, 1, 4),
+                    datetime.date(2024, 1, 5),
+                    datetime.date(2024, 1, 6),
+                    datetime.date(2024, 1, 7),
+                    datetime.date(2024, 1, 8),
+                    datetime.date(2024, 1, 9),
+                    datetime.date(2024, 1, 10),
+                    datetime.date(2024, 1, 11),
+                    datetime.date(2024, 1, 2),
+                    datetime.date(2024, 1, 3),
+                    datetime.date(2024, 1, 4),
+                    datetime.date(2024, 1, 5),
+                    datetime.date(2024, 1, 6),
+                    datetime.date(2024, 1, 7),
+                    datetime.date(2024, 1, 8),
+                    datetime.date(2024, 1, 9),
+                    datetime.date(2024, 1, 10),
+                    datetime.date(2024, 1, 11),
+                ],
+                dtype=pl.Date,
+            ),
+            pl.Series(
+                "method",
+                [
+                    "arithmetic",
+                    "arithmetic",
+                    "arithmetic",
+                    "arithmetic",
+                    "arithmetic",
+                    "arithmetic",
+                    "arithmetic",
+                    "arithmetic",
+                    "arithmetic",
+                    "arithmetic",
+                    "fractional",
+                    "fractional",
+                    "fractional",
+                    "fractional",
+                    "fractional",
+                    "fractional",
+                    "fractional",
+                    "fractional",
+                    "fractional",
+                    "fractional",
+                    "geometric",
+                    "geometric",
+                    "geometric",
+                    "geometric",
+                    "geometric",
+                    "geometric",
+                    "geometric",
+                    "geometric",
+                    "geometric",
+                    "geometric",
+                ],
+                dtype=pl.Categorical(ordering="physical"),
+            ),
+            pl.Series(
+                "value",
+                [
+                    None,
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    None,
+                    0.10000000000000009,
+                    0.10000000000000007,
+                    0.10000000000000017,
+                    0.09999999999999996,
+                    0.10000000000000007,
+                    0.10000000000000014,
+                    0.10000000000000016,
+                    0.10000000000000013,
+                    0.10000000000000009,
+                    None,
+                    1.1,
+                    1.1,
+                    1.1,
+                    1.0999999999999999,
+                    1.1,
+                    1.1,
+                    1.1,
+                    1.1,
+                    1.1,
+                ],
+                dtype=pl.Float64,
+            ),
+        ]
+    )
+
+    assert_frame_equal(result_df, expected_df)
+
+
+def test_basic_args_without_param(df) -> None:
+    # with a param columns
+    result_df = (
+        df.filter(method="arithmetic")
+        .drop("method")
+        .mathx.diff(n=1, method="arithmetic", null_strategy="ignore")
+        .collect()
+    )
+
+    expected_df = pl.DataFrame(
+        [
+            pl.Series(
+                "time",
+                [
+                    datetime.date(2024, 1, 2),
+                    datetime.date(2024, 1, 3),
+                    datetime.date(2024, 1, 4),
+                    datetime.date(2024, 1, 5),
+                    datetime.date(2024, 1, 6),
+                    datetime.date(2024, 1, 7),
+                    datetime.date(2024, 1, 8),
+                    datetime.date(2024, 1, 9),
+                    datetime.date(2024, 1, 10),
+                    datetime.date(2024, 1, 11),
+                ],
+                dtype=pl.Date,
+            ),
+            pl.Series(
+                "value",
+                [None, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+                dtype=pl.Float64,
+            ),
+        ]
+    )
+
+    assert_frame_equal(result_df, expected_df)
+
+
+def test_basic_params(df, params):
     result_df = df.mathx.diff(params=params).collect()
     # print(result_df.to_init_repr())
 
@@ -141,20 +298,20 @@ def test_basic(df, params):
                     1.0,
                     1.0,
                     None,
-                    0.1,
-                    0.1,
-                    0.1,
-                    0.1,
-                    0.1,
-                    0.1,
-                    0.1,
-                    0.1,
-                    0.1,
+                    0.10000000000000009,
+                    0.10000000000000007,
+                    0.10000000000000017,
+                    0.09999999999999996,
+                    0.10000000000000007,
+                    0.10000000000000014,
+                    0.10000000000000016,
+                    0.10000000000000013,
+                    0.10000000000000009,
                     None,
                     1.1,
                     1.1,
                     1.1,
-                    1.1,
+                    1.0999999999999999,
                     1.1,
                     1.1,
                     1.1,

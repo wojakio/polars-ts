@@ -4,7 +4,7 @@ import polars as pl
 
 from .grouper import Grouper
 
-from .sf import SeriesFrame, impl_handle_null
+from .sf import SeriesFrame
 from .sf_helper import prepare_params, prepare_result
 
 from .mathx_helper import (
@@ -29,18 +29,18 @@ class MathxFrame(SeriesFrame, Generic[FrameType]):
         partition: Grouper = Grouper.by_all_and("n"),
         *,
         n: int = 1,
-        method: str = 'arithmetic',
-        null_strategy: str = 'ignore',
+        method: str = "arithmetic",
+        null_strategy: str = "ignore",
         null_param_1: Any = None,
         params: Optional[FrameType] = None,
     ) -> FrameType:
         params = prepare_params(
             self._df,
             params,
-            n=n,
-            method=method,
-            null_strategy=null_strategy,
-            null_param_1=null_param_1,
+            n=(n, pl.NUMERIC_DTYPES),
+            method=(method, pl.Categorical),
+            null_strategy=(null_strategy, pl.Categorical),
+            null_param_1=(null_param_1, pl.NUMERIC_DTYPES),
         )
         df = impl_diff(self._df, partition, params)
         # df = impl_handle_null(df, partition, params)
@@ -55,21 +55,20 @@ class MathxFrame(SeriesFrame, Generic[FrameType]):
         partition: Grouper = Grouper.by_all_and("n"),
         *,
         n: int = 1,
-        null_strategy: str = 'ignore',
+        null_strategy: str = "ignore",
         null_param_1: Any = None,
         params: Optional[FrameType] = None,
     ) -> FrameType:
         params = prepare_params(
             self._df,
             params,
-            n=n,
-            null_strategy=null_strategy,
-            null_param_1=null_param_1,
+            n=(n, pl.NUMERIC_DTYPES),
+            null_strategy=(null_strategy, pl.Categorical),
+            null_param_1=(null_param_1, pl.NUMERIC_DTYPES),
         )
 
         df = impl_shift(self._df, partition, params)
         return prepare_result(df)
-
 
     def ewm_mean(
         self,
@@ -78,18 +77,18 @@ class MathxFrame(SeriesFrame, Generic[FrameType]):
         alpha: float = 0.5,
         min_periods: int = 0,
         adjust: bool = False,
-        null_strategy: str = 'ignore',
+        null_strategy: str = "ignore",
         null_param_1: Any = None,
         params: Optional[FrameType] = None,
     ) -> FrameType:
         params = prepare_params(
             self._df,
             params,
-            alpha=alpha,
-            min_periods=min_periods,
-            adjust=adjust,
-            null_strategy=null_strategy,
-            null_param_1=null_param_1,
+            alpha=(alpha, pl.Float64),
+            min_periods=(min_periods, pl.Int64),
+            adjust=(adjust, pl.Categorical),
+            null_strategy=(null_strategy, pl.Categorical),
+            null_param_1=(null_param_1, pl.NUMERIC_DTYPES),
         )
 
         df = impl_ewm_mean(self._df, partition, params)

@@ -38,10 +38,6 @@ def impl_diff(
         ).over(grouper_cols)
     ).select(result_cols)
 
-    # .select(handle_nulls(pl.col(numeric_cols), strategy, sentinel))
-
-    # result = impl_fill_null(result, null_strategy, null_param_1, partition)
-
     return result
 
 
@@ -60,7 +56,14 @@ def impl_shift(
     partition: Grouper,
     params: FrameType,
 ) -> FrameType:
-    p = ParamSchema(n=pl.Int64)
+    p = (
+        ParamSchema(n=pl.Int64)
+        .optional(
+            null_strategy=pl.Categorical,
+            null_param_1=pl.NUMERIC_DTYPES,
+        )
+        .defaults(null_strategy="ignore", null_param_1=None)
+    )
 
     df, result_cols = p.apply(df, params)
     grouper_cols = partition.apply(df)
@@ -83,8 +86,15 @@ def impl_ewm_mean(
 ) -> FrameType:
     p = (
         ParamSchema(alpha=pl.Float64)
-        .optional(min_periods=pl.Int64, adjust=pl.Boolean)
-        .defaults(min_periods=0, adjust=False)
+        .optional(
+            min_periods=pl.Int64,
+            adjust=pl.Boolean,
+            null_strategy=pl.Categorical,
+            null_param_1=pl.NUMERIC_DTYPES,
+        )
+        .defaults(
+            min_periods=0, adjust=False, null_strategy="ignore", null_param_1=None
+        )
     )
 
     df, result_cols = p.apply(df, params)

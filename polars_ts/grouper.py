@@ -114,6 +114,11 @@ class Grouper:
         return cols
 
     @staticmethod
+    def columns(df: FrameType, include_time: bool) -> List[str]:
+        cols = df.columns if include_time else df.select(pl.exclude("time")).columns
+        return cols
+
+    @staticmethod
     def values(df: FrameType, exclude: List[str]) -> List[str]:
         cats = set(Grouper.categories(df, include_time=True))
         cols = set(df.columns).difference(cats).difference(exclude)

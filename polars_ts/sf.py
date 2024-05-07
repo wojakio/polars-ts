@@ -43,11 +43,16 @@ class SeriesFrame(Generic[FrameType]):
         self,
         partition: Grouper = Grouper.by_all(),
         *,
-        null_strategy: str = 'ignore',
+        null_strategy: str = "ignore",
         null_param_1: Any = None,
         params: Optional[FrameType] = None,
     ) -> FrameType:
-        params = prepare_params(self._df, params, null_strategy=null_strategy, null_param_1=null_param_1)
+        params = prepare_params(
+            self._df,
+            params,
+            null_strategy=(null_strategy, pl.Categorical),
+            null_param_1=(null_param_1, pl.NUMERIC_DTYPES),
+        )
         df = impl_handle_null(self._df, partition, params)
         return prepare_result(df)
 

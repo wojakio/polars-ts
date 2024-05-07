@@ -1,9 +1,9 @@
-from typing import Optional
+from typing import Any, Optional
 
 import polars as pl
 from polars.type_aliases import JoinStrategy
 
-from ..types import FrameType
+from ..types import cast_dtype, FrameType
 from ..grouper import Grouper
 from ..param_schema import ParamSchema
 from ..expr.sf import handle_null_custom
@@ -18,19 +18,20 @@ RESERVED_DELIMITER = "##@"
 def prepare_result(df: FrameType) -> FrameType:
     return df.select(pl.exclude(RESERVED_COL_REGEX))
 
+
 def prepare_params(
-    df: FrameType,
-    params: Optional[FrameType],
-    **kwargs
+    df: FrameType, params: Optional[FrameType], **kwargs: Any
 ) -> FrameType:
     if params is None:
         params = df.clear().select()
 
-    params = params.with_columns([
-        pl.lit(value).alias(name)
-        for name, value in kwargs.items()
-        if name not in params.columns
-    ])
+    params = params.with_columns(
+        [
+            cast_dtype(pl.lit(value), dtype).alias(name)
+            for name, (value, dtype) in kwargs.items()
+            if name not in params.columns
+        ]
+    )
 
     return params
 
@@ -53,11 +54,9 @@ def impl_handle_null(
     df, result_cols = p.apply(df, params)
     grouper_cols = partition.apply(df)
     numeric_cols = partition.numerics(df, exclude=p.names())
-    value_cols = partition.values(df, exclude=p.names())
+    # value_cols = partition.values(df, exclude=p.names())
 
-    explode_cols = value_cols
-    if "time" not in grouper_cols and "time" in df.columns:
-        explode_cols.append("time")
+    explode_cols = set(result_cols).difference(grouper_cols)
 
     result = (
         df.group_by(grouper_cols, maintain_order=True)
@@ -66,7 +65,7 @@ def impl_handle_null(
             handle_null_custom(pl.col(numeric_cols), "null_strategy", "null_param_1"),
         )
         .select(result_cols)
-        .explode(explode_cols)
+        .explode(*explode_cols)
     )
 
     return result

@@ -4,7 +4,7 @@ import polars as pl
 from polars.type_aliases import JoinStrategy
 
 from .grouper import Grouper
-from .types import FrameType
+from .types import cast_dtype, FrameType
 
 
 class ParamSchema:
@@ -13,7 +13,6 @@ class ParamSchema:
         self._optional_schema: Dict[str, pl.DataType] = dict()
         self._defaults: Dict[str, Any] = dict()
         self._allow_additional_params: bool = False
-
 
     def allow_additional_params(self) -> "ParamSchema":
         self._allow_additional_params = True
@@ -52,16 +51,6 @@ class ParamSchema:
 
         self._defaults.update(kwargs)
         return self
-
-    @staticmethod
-    def _set_type(expr: pl.Expr, dtype: pl.DataType) -> pl.Expr:
-        if dtype == pl.NUMERIC_DTYPES:
-            return expr
-
-        if dtype == pl.Categorical:
-            expr = expr.cast(pl.String)
-        
-        return expr.cast(dtype)
 
     def names(self) -> List[str]:
         all_names = set(self._required_schema.keys()).union(
@@ -106,10 +95,7 @@ class ParamSchema:
 
         # attempt to correct dtypes of parameters
         params = params.with_columns(
-            [
-                ParamSchema._set_type(pl.col(name), dtype)
-                for name, dtype in full_schema.items()
-            ]
+            [cast_dtype(pl.col(name), dtype) for name, dtype in full_schema.items()]
         )
 
         common_cols = Grouper.common_categories(df, params)
@@ -124,8 +110,8 @@ class ParamSchema:
 
         param_cols = [
             p
-            for p in Grouper.categories(params, include_time=False)
-            if p not in self._optional_schema.keys()
+            for p in Grouper.columns(params, include_time=False)
+            if p not in full_schema.keys()
         ]
         result_cols = (
             pl.Series(values=df.columns + param_cols)
