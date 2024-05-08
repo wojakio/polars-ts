@@ -338,7 +338,7 @@ def test_multi_param_no_categories():
         [
             pl.Series("a", ["diff_1", "diff_2"], dtype=pl.Categorical),
             pl.Series("n", [1, 2], dtype=pl.Int64),
-            pl.Series("null_strategy", ["drop", "ignore"], dtype=pl.Categorical),
+            pl.Series("null_strategy", ["drop_if_any", "ignore"], dtype=pl.Categorical),
         ]
     )
 

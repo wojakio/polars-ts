@@ -51,7 +51,7 @@ class MathxFrame(SeriesFrame, Generic[FrameType]):
 
     def shift(
         self,
-        partition: Grouper = Grouper.by_all_and("n"),
+        partition: Grouper = Grouper.by_all(),
         *,
         n: int = 1,
         null_strategy: str = "ignore",
@@ -71,7 +71,7 @@ class MathxFrame(SeriesFrame, Generic[FrameType]):
 
     def ewm_mean(
         self,
-        partition: Grouper = Grouper.by_all_and("alpha"),
+        partition: Grouper = Grouper.by_all(),
         *,
         alpha: float = 0.5,
         min_periods: int = 0,

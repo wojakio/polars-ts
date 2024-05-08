@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any, List, Optional
 
 import polars as pl
 from polars.type_aliases import JoinStrategy
@@ -6,7 +6,6 @@ from polars.type_aliases import JoinStrategy
 from ..types import cast_dtype, FrameType
 from ..grouper import Grouper
 from ..param_schema import ParamSchema
-from ..expr.sf import handle_null_custom
 
 RESERVED_COL_PREFIX = "##@_"
 RESERVED_COL_REGEX = "^##@_.*$"
@@ -36,6 +35,48 @@ def prepare_params(
     return params
 
 
+def _handle_null_helper(df: FrameType, value_cols: List[str]) -> FrameType:
+    first_row = df.lazy().head(1).collect()
+    null_strategy = first_row.item(0, "null_strategy")
+
+    match null_strategy:
+        case "sentinel":
+            sentinel_value = first_row.item(0, "null_param_1")
+            result = df.with_columns(pl.col(value_cols).fill_null(sentinel_value))
+        case "forward":
+            fill_limit = int(first_row.item(0, "null_param_1"))
+            result = df.with_columns(pl.col(value_cols).forward_fill(fill_limit))
+        case "backward":
+            fill_limit = int(first_row.item(0, "null_param_1"))
+            result = df.with_columns(pl.col(value_cols).backward_fill(fill_limit))
+        case "interpolate_linear":
+            result = df.with_columns(pl.col(value_cols).interpolate(method="linear"))
+        case "interpolate_nearest":
+            result = df.with_columns(pl.col(value_cols).interpolate(method="nearest"))
+        case "min":
+            result = df.with_columns(pl.col(value_cols).fill_null(strategy="min"))
+        case "max":
+            result = df.with_columns(pl.col(value_cols).fill_null(strategy="max"))
+        case "mean":
+            result = df.with_columns(pl.col(value_cols).fill_null(strategy="mean"))
+        case "ignore":
+            result = df
+        case "trim_start_n":
+            n = int(first_row.item(0, "null_param_1"))
+            result = df.slice(n)
+        case "trim_end_n":
+            n = int(first_row.item(0, "null_param_1"))
+            result = df.reverse().slice(n).reverse()
+        case "drop_if_all":
+            result = df.filter(pl.all_horizontal(pl.col(value_cols).is_not_null()))
+        case "drop_if_any":
+            result = df.filter(pl.any_horizontal(pl.col(value_cols).is_not_null()))
+        case _:
+            raise ValueError(f"Unknown null_strategy {null_strategy}")
+
+    return result
+
+
 def impl_handle_null(
     df: FrameType,
     partition: Grouper,
@@ -53,17 +94,10 @@ def impl_handle_null(
     # numeric_cols = partition.numerics(df, exclude=ps.names("*", invert=False))
     value_cols = partition.values(df, exclude=ps.names("*", invert=False))
 
-    explode_cols = set(result_cols).difference(grouper_cols)
-
     result = (
         df.group_by(grouper_cols, maintain_order=True)
-        .agg(
-            pl.exclude(value_cols),
-            handle_null_custom(pl.col(value_cols), "null_strategy", "null_param_1"),
-        )
+        .map_groups(lambda df: _handle_null_helper(df, value_cols), df.schema)  # type: ignore[call-arg]
         .select(result_cols)
-        # .with_columns(pl.col(explode_cols).list.lengths().name.prefix('len_'))
-        .explode(*explode_cols)
     )
 
     return result

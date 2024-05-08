@@ -94,11 +94,11 @@ def impl_ewm_mean(
         ]
     )
 
-    df, ewm_params, result_cols = ps.apply("ewm", df, params)
+    df, _params, result_cols = ps.apply("ewm", df, params)
     grouper_cols = partition.apply(df)
     numeric_cols = partition.numerics(df, exclude=ps.names("*", invert=False))
 
-    result = df.with_columns(
+    df_fn_result = df.with_columns(
         ewm_custom(
             pl.col(numeric_cols),
             "alpha",
@@ -107,4 +107,7 @@ def impl_ewm_mean(
         ).over(grouper_cols)
     ).select(result_cols)
 
-    return result
+    _df_null, null_params, result_cols = ps.apply("null", df_fn_result, params)
+    df_null_result = impl_handle_null(df_fn_result, partition, null_params)
+
+    return df_null_result
