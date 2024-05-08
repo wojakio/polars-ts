@@ -1,17 +1,22 @@
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Generic
 
 import polars as pl
+from polars.type_aliases import IntoExpr
 
 from .sf import SeriesFrame
+from .sf_helper import prepare_result
+from .types import FrameType
+from .time_helper import impl_range, impl_ranges
+from .utils import parse_into_expr
 
 __NAMESPACE = "time"
 
 
 @pl.api.register_lazyframe_namespace(__NAMESPACE)
-class TimeFrame(SeriesFrame):
-    def __init__(self, df: pl.LazyFrame) -> None:
-        self._df = df
+class TimeFrame(SeriesFrame, Generic[FrameType]):
+    def __init__(self, df: FrameType) -> None:
+        super().__init__(df)
 
     def range(
         self,
@@ -19,27 +24,25 @@ class TimeFrame(SeriesFrame):
         t1: Optional[datetime] = None,
         offset: str = "0d",
         interval: str = "1d",
-    ) -> pl.LazyFrame:
-        self._df = self._df.with_columns(
-            time=(
-                pl.lit([t0, t1])
-                .list.concat(pl.lit(t0).dt.offset_by(offset))
-                .list.drop_nulls()
-                .list.unique()
-                .list.sort()
-            )
+    ) -> FrameType:
+        df = impl_range(self._df, t0, t1, offset, interval)
+
+        return prepare_result(df)
+
+    def ranges(
+        self,
+        start_date: IntoExpr,
+        end_date: IntoExpr,
+        skip_dates: IntoExpr = pl.lit([]),
+        iso_weekends: IntoExpr = pl.lit([1, 2, 3, 4, 5]),
+        out_name: str = "ranges",
+    ) -> FrameType:
+        start_date = parse_into_expr(start_date)
+        end_date = parse_into_expr(end_date)
+        skip_dates = parse_into_expr(skip_dates)
+        iso_weekends = parse_into_expr(iso_weekends, dtype=pl.List(pl.Int8))
+
+        df = impl_ranges(
+            self._df, start_date, end_date, skip_dates, iso_weekends, out_name
         )
-
-        return self.expand(interval)
-
-    def expand(self, interval: str = "1d") -> pl.Series:
-        # pre: every row has a time: list[date] column
-        # xdt doesnt support date_ranges?
-        # fn = xdt.date_range if interval.endswith('bd') else pl.date_ranges
-        fn = pl.date_ranges
-
-        self._df = self._df.with_columns(
-            fn(pl.col("time").list.min(), pl.col("time").list.max(), interval)
-        ).explode("time")
-
-        return self._df
+        return prepare_result(df)

@@ -1,8 +1,18 @@
 #![allow(clippy::unused_unit)]
 use crate::math::{impl_random_normal, impl_random_uniform, impl_wyhash};
+// use crate::time::impl_datetime_ranges_custom;
+use crate::time::utils::temporal_ranges_impl_broadcast;
 use crate::utils::same_output_type;
+use polars_ops::series::{diff, ewm_mean, pct_change, EWMOptions};
+use polars_time::chunkedarray::DateMethods;
+use polars_time::{datetime_range_impl, ClosedWindow, Duration};
+
+use polars_arrow::temporal_conversions::MILLISECONDS_IN_DAY;
+use std::collections::HashSet;
+use std::ops::Add;
 
 use polars::prelude::*;
+
 use pyo3_polars::derive::polars_expr;
 use pyo3_polars::export::polars_core::utils::CustomIterTools;
 
@@ -81,6 +91,232 @@ fn pl_random_normal(inputs: &[Series]) -> PolarsResult<Series> {
 fn pl_wyhash(inputs: &[Series]) -> PolarsResult<Series> {
     let s = inputs.first().unwrap();
     let result = impl_wyhash(s)?.into_series();
+    Ok(result)
+}
+
+fn list_i64_dtype(input_fields: &[Field]) -> PolarsResult<Field> {
+    let dtype = DataType::List(Box::new(DataType::Int64));
+    let field = Field::new(input_fields[0].name(), dtype);
+    Ok(field.clone())
+}
+
+const CAPACITY_FACTOR: usize = 5;
+
+#[polars_expr(output_type_func=list_i64_dtype)]
+fn pl_datetime_ranges_custom(inputs: &[Series]) -> PolarsResult<Series> {
+    // thread::sleep(std::time::Duration::from_millis(4000));
+
+    let start = &inputs[0];
+    let end = &inputs[1];
+
+    let start = start.cast(&DataType::Int64)?;
+    let end = end.cast(&DataType::Int64)?;
+
+    let start: ChunkedArray<Int64Type> = start.i64().unwrap() * MILLISECONDS_IN_DAY;
+    let end: ChunkedArray<Int64Type> = end.i64().unwrap() * MILLISECONDS_IN_DAY;
+
+    let empty32 = ListChunked::full_null_with_dtype("skips", start.len(), &DataType::Int32);
+    let empty64 = ListChunked::full_null_with_dtype("weekend", start.len(), &DataType::Int64);
+
+    let skips: &ListChunked = inputs[2].list().unwrap_or(&empty32); //.unwrap_or(ChunkedArray<ListType>::from_);
+    let weekends: &ListChunked = inputs[3].list().unwrap_or(&empty64);
+
+    // builder for the output Series = ListChunked = ChunkedArray< ListType > = ChunkedArray< List<Date> >
+    let mut builder = ListPrimitiveChunkedBuilder::<Int32Type>::new(
+        start.name(),
+        start.len(),
+        start.len() * CAPACITY_FACTOR,
+        DataType::Int32,
+    );
+
+    let interval = Duration::parse("1d");
+    let closed = ClosedWindow::Both;
+
+    let range_per_row_impl =
+        |start,
+         end,
+         skips: Vec<i32>,
+         weekends: Vec<i64>,
+         builder: &mut ListPrimitiveChunkedBuilder<Int32Type>| {
+            let rng = datetime_range_impl(
+                "",
+                start,
+                end,
+                interval,
+                closed,
+                TimeUnit::Milliseconds,
+                None,
+            )?;
+            let rng = rng.cast(&DataType::Date).unwrap();
+
+            let skips: Vec<i64> = skips
+                .iter()
+                .map(|&v| (v as i64) * MILLISECONDS_IN_DAY)
+                .collect();
+            let skips_set = skips.into_iter().collect::<HashSet<_>>();
+
+            let rng_i64 = rng.cast(&DataType::Int64)?;
+            let rng_i64 = rng_i64.i64().unwrap() * MILLISECONDS_IN_DAY; // Ensure this is a date type, handle errors as needed
+            let holiday_mask: BooleanChunked =
+                rng_i64.apply_values_generic(|dt| !skips_set.contains(&dt));
+
+            let rng_no_hols = rng.filter(&holiday_mask)?;
+
+            let rng_weekends: &ChunkedArray<Int8Type> =
+                &rng_no_hols.date().map(|ca| ca.weekday()).unwrap();
+
+            let rng_weekends = rng_weekends.cast(&DataType::Int64).unwrap();
+            let rng_weekends: &ChunkedArray<Int64Type> = rng_weekends.i64().unwrap();
+            let weekends_mask: BooleanChunked =
+                rng_weekends.apply_values_generic(|wd| !weekends.contains(&wd));
+
+            let rng_no_hols_wd_only = rng_no_hols.filter(&weekends_mask)?;
+
+            let rng = rng_no_hols_wd_only.to_physical_repr();
+            let rng = rng.i32().unwrap();
+            builder.append_iter(rng.iter());
+            Ok(())
+        };
+
+    let out = temporal_ranges_impl_broadcast(
+        &start,
+        &end,
+        skips,
+        weekends,
+        range_per_row_impl,
+        &mut builder,
+    )?;
+
+    let to_type = DataType::List(Box::new(DataType::Date));
+    let result = out.cast(&to_type)?.into_series();
+    Ok(result)
+}
+
+#[polars_expr(output_type_func=same_output_type)]
+fn pl_ewm_custom(inputs: &[Series]) -> PolarsResult<Series> {
+    let s = &inputs[0];
+    let alpha = inputs[1].f64()?.get(0).unwrap();
+    let min_periods = inputs[2].u64()?.get(0).unwrap() as usize;
+    let adjust = inputs[3].bool()?.get(0).unwrap();
+
+    let options = EWMOptions {
+        alpha,
+        adjust,
+        bias: false,
+        min_periods,
+        ignore_nulls: true,
+    };
+
+    // dbg!(&options);
+
+    ewm_mean(s, options)
+}
+
+#[polars_expr(output_type_func=same_output_type)]
+fn pl_shift_custom(inputs: &[Series]) -> PolarsResult<Series> {
+    let s = &inputs[0];
+    let n = inputs[1].i64()?.get(0).unwrap();
+
+    let shifted = s.shift(n);
+    Ok(shifted)
+}
+
+#[polars_expr(output_type_func=same_output_type)]
+fn pl_diff_custom(inputs: &[Series]) -> PolarsResult<Series> {
+    let s = &inputs[0];
+    let n = inputs[1].i64()?.get(0).unwrap();
+    let method = inputs[2].str()?.get(0).unwrap();
+
+    match method {
+        "arithmetic" => diff(s, n, polars::series::ops::NullBehavior::Ignore),
+        "fractional" => {
+            let n = Series::new("n__", &[n]);
+            pct_change(s, &n)
+        }
+        "geometric" => {
+            let n = Series::new("n__", &[n]);
+            let res = pct_change(s, &n).unwrap().add(1_f64);
+            Ok(res)
+        }
+        _ => {
+            panic!("unknown diff method `{:?}`", method)
+        }
+    }
+}
+
+#[polars_expr(output_type_func=same_output_type)]
+fn pl_handle_null_custom(inputs: &[Series]) -> PolarsResult<Series> {
+    let values = &inputs[0];
+    let null_strategy = inputs[1].str()?.get(0).unwrap();
+
+    // dbg!(&null_strategy);
+    // dbg!(&arg_1);
+    // dbg!(&values);
+
+    let mut result = values.clone();
+    match null_strategy {
+        "sentinel" => {
+            let sentinel = inputs[2].f64()?.get(0).unwrap();
+            result = result.f64()?.fill_null_with_values(sentinel)?.into_series();
+        }
+        "trim_start_n" => {
+            let input_len = &values.len();
+            let n = inputs[2].cast(&DataType::Int64)?.i64()?.get(0).unwrap();
+            let result_len = input_len - (n as usize);
+            result = result.slice(n, result_len);
+        }
+        "trim_end_n" => {
+            let input_len = &values.len();
+            let n = inputs[2].cast(&DataType::Int64)?.i64()?.get(0).unwrap();
+            let result_len = input_len - (n as usize);
+            result = result.slice(0, result_len);
+        }
+        "drop" => {
+            result = result.drop_nulls();
+        }
+        "forward" => {
+            result = result.fill_null(FillNullStrategy::Forward(None))?;
+        }
+        "backward" => {
+            result = result.fill_null(FillNullStrategy::Backward(None))?;
+        }
+        "interpolate_linear" => {
+            dbg!("todo interpolate_linear");
+        }
+        "interpolate_nearest" => {
+            dbg!("todo interpolate_nearest");
+        }
+        "min" => {
+            result = result.fill_null(FillNullStrategy::Min)?;
+        }
+        "max" => {
+            result = result.fill_null(FillNullStrategy::Max)?;
+        }
+        "mean" => {
+            result = result.fill_null(FillNullStrategy::Mean)?;
+        }
+        "ignore" => {
+            result = values.clone();
+        }
+        _ => {
+            panic!("unknown null_strategy: `{:?}`", null_strategy)
+        }
+    }
 
     Ok(result)
+}
+
+#[cfg(test)]
+mod test {
+    use polars::prelude::*;
+
+    #[test]
+    fn test_series_equals() {
+        let a = Series::new("a", &[1_u32, 2, 3]);
+        let b = Series::new("a", &[1_u32, 2, 3]);
+        assert!(a.equals(&b));
+
+        let s = Series::new("foo", &[None, Some(1i64)]);
+        assert!(s.equals_missing(&s));
+    }
 }

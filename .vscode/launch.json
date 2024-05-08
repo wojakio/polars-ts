@@ -1,0 +1,35 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug Rust/Python",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/tools/launch.py",
+            "args": [
+                "${file}"
+            ],
+            "console": "internalConsole",
+            "justMyCode": true,
+            "serverReadyAction": {
+                "pattern": "pID = ([0-9]+)",
+                "action": "startDebugging",
+                "name": "Rust LLDB"
+            }
+        },
+        {
+            "name": "Rust LLDB",
+            "pid": "16185",
+            "type": "lldb",
+            "request": "attach",
+            "program": "${workspaceFolder}/.venv/bin/python",
+            "stopOnEntry": false,
+            "sourceLanguages": [
+                "rust"
+            ],
+            "presentation": {
+                "hidden": true
+            }
+        }
+    ]
+}

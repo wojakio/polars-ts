@@ -8,12 +8,21 @@ import polars as pl
 from .display import *
 from .sf import *
 from .tsf import *
+from .io import *
 from .time import *
+from .convert import *
 from .dummy import *
+from .mathx import *
 from .resample import *
 
 from .calendar import *
 from .futures import *
+from .dummymkt import *
+
+from .grouper import Grouper  # noqa
+from .expr import *
+
+pl.enable_string_cache()
 
 
 if TYPE_CHECKING:

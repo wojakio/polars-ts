@@ -1,0 +1,7 @@
+base,target,conversion_factor
+BTC,USD,1000000
+BTC,ETH,100
+ETH,XDG,100000
+SHIB,XDG,1
+ALGO,BTC,0.5
+USD,EUR,0.1

@@ -1,66 +1,83 @@
-from typing import Iterable, List, Mapping, Literal
+from typing import Any, Generic, Optional
 
 import polars as pl
+from polars.type_aliases import IntoExpr, JoinStrategy
+
+from .grouper import Grouper
+from .sf_helper import (
+    impl_handle_null,
+    impl_join,
+    impl_join_on_list_items,
+    impl_unique,
+    prepare_params,
+    prepare_result,
+    RESERVED_ALL_GRP,
+)
+from .types import FrameType
+from .utils import parse_into_expr
 
 __NAMESPACE = "sf"
 
 
 @pl.api.register_lazyframe_namespace(__NAMESPACE)
-class SeriesFrame:
-    _RESERVED_COL_PREFIX = "##@_"
-    _RESERVED_COL_REGEX = "^##@_.*$"
-    _RESERVED_ALL_GRP = f"{_RESERVED_COL_PREFIX}_GRP_ALL"
-    _RESERVED_ROW_IDX = f"{_RESERVED_COL_PREFIX}_INDEX"
+class SeriesFrame(Generic[FrameType]):
+    def __init__(self, df: FrameType):
+        self._df: FrameType = df.with_columns(
+            pl.lit("_placeholder_").cast(pl.Categorical).alias(RESERVED_ALL_GRP)
+        )
 
-    def __init__(self, df: pl.LazyFrame):
-        self._df = df.with_columns(pl.lit(0, pl.Boolean).alias(self._RESERVED_ALL_GRP))
-
-    @property
-    def result_df(self) -> pl.LazyFrame:
-        return self._df.select(pl.exclude(self._RESERVED_COL_REGEX))
-
-    def _value_types(self):
-        return pl.NUMERIC_DTYPES
-
-    def category_names(self) -> List[str]:
-        return self.categories().columns
-
-    def value_names(self) -> Iterable[str]:
-        return set(self._df.columns).difference(self.category_names())
-
-    def values(self) -> pl.LazyFrame:
-        return self._df.select(self.value_names())
-
-    def categories(self) -> pl.LazyFrame:
-        return self._df.select(pl.col(pl.Categorical, pl.Enum))
-
-    def ht(self, nrows=3) -> pl.LazyFrame:
-        if len(self._df) <= (nrows + nrows):
-            return self._df
-
-        return pl.concat([self._df.head(nrows), self._df.tail(nrows)])
-
-    def common_category_names(self, rhs: pl.LazyFrame) -> List[str]:
-        return sorted(set(self.category_names()).intersection(rhs.sf.category_names()))
-
-    def auto_partition(
+    def join(
         self,
-        partition: Mapping[Literal["by", "but"], List[str]],
-    ) -> List[str]:
-        cols = set(self.categories().columns).difference(["time"])
-        if partition is not None:
-            if len(set(partition.keys()).intersection(["by", "but"])) > 1:
-                raise ValueError("Must specify 'by' xor 'but'")
+        other: FrameType,
+        grouper: Grouper = Grouper.by_common_including_time(),
+        how: JoinStrategy = "inner",
+    ) -> FrameType:
+        df = impl_join(self._df, other, grouper, how)
+        return prepare_result(df)
 
-            if "by" in partition:
-                by = partition["by"]
-                cols = cols.intersection(by)
+    def unique(self, grouper: Grouper = Grouper.by_time_and_all()) -> FrameType:
+        df = impl_unique(self._df, grouper)
+        return prepare_result(df)
 
-            if "but" in partition:
-                but = partition["but"]
-                cols = cols.difference(but)
+    def handle_null(
+        self,
+        partition: Grouper = Grouper.by_all(),
+        *,
+        null_strategy: str = "ignore",
+        null_param_1: Any = None,
+        params: Optional[FrameType] = None,
+    ) -> FrameType:
+        params = prepare_params(
+            self._df,
+            params,
+            null_strategy=(null_strategy, pl.Categorical),
+            null_param_1=(null_param_1, pl.Float64),
+        )
+        df = impl_handle_null(self._df, partition, params)
+        return prepare_result(df)
 
-            if len(cols) == 0:
-                raise ValueError(f"Invalid partition spec. {partition}")
+    def join_on_list_items(
+        self,
+        other: FrameType,
+        left_on: IntoExpr,
+        right_on: IntoExpr,
+        how: JoinStrategy,
+        flatten: bool = True,
+        then_unique: bool = True,
+        then_sort: bool = True,
+    ) -> FrameType:
+        left_on = parse_into_expr(left_on)
+        right_on = parse_into_expr(right_on)
 
-        return sorted(cols)
+        df = impl_join_on_list_items(
+            self._df,
+            other,
+            left_on=left_on,
+            right_on=right_on,
+            how=how,
+            flatten=flatten,
+            then_unique=then_unique,
+            then_sort=then_sort,
+        )
+
+        return prepare_result(df)

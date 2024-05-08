@@ -1,0 +1,12 @@
+base,target,conversion_factor
+tonne,kg,1000
+kg,stone,0.157473
+kg,gram,1000
+mm,nm,1000000
+cm,mm,10
+m,cm,100.0
+km,m,1000
+day,hr,24
+hr,min,60
+min,sec,60
+km,miles,0.62137100
