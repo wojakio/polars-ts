@@ -88,7 +88,10 @@ def impl_ewm_mean(
         [
             ("ewm", "alpha", pl.Float64, 0.5),
             ("ewm", "min_periods", pl.Int64, 0),
-            ("ewm", "adjust", pl.Int64, 0),
+            ("ewm", "adjust", pl.Boolean, False),
+            ("ewm", "outlier_strategy", pl.String, None),
+            ("ewm", "outlier_param_1", pl.Float64, 0.0),
+            ("ewm", "outlier_param_2", pl.Float64, 100.0),
             ("null", "null_strategy", pl.Categorical, "ignore"),
             ("null", "null_param_1", pl.Float64, None),
         ]
@@ -104,6 +107,9 @@ def impl_ewm_mean(
             "alpha",
             "min_periods",
             "adjust",
+            "outlier_strategy",
+            "outlier_param_1",
+            "outlier_param_2",
         ).over(grouper_cols)
     ).select(result_cols)
 

@@ -1,9 +1,10 @@
 #![allow(clippy::unused_unit)]
-use crate::math::{impl_random_normal, impl_random_uniform, impl_wyhash};
-// use crate::time::impl_datetime_ranges_custom;
+use crate::math::ewm::{impl_ewm_mean_f64, OutlierOptions};
+use crate::math::random::{impl_random_normal, impl_random_uniform, impl_wyhash};
+
 use crate::time::utils::temporal_ranges_impl_broadcast;
 use crate::utils::same_output_type;
-use polars_ops::series::{diff, ewm_mean, pct_change, EWMOptions};
+use polars_ops::series::{diff, pct_change};
 use polars_time::chunkedarray::DateMethods;
 use polars_time::{datetime_range_impl, ClosedWindow, Duration};
 
@@ -198,18 +199,39 @@ fn pl_ewm_custom(inputs: &[Series]) -> PolarsResult<Series> {
     let alpha = inputs[1].f64()?.get(0).unwrap();
     let min_periods = inputs[2].u64()?.get(0).unwrap() as usize;
     let adjust = inputs[3].bool()?.get(0).unwrap();
-
-    let options = EWMOptions {
-        alpha,
-        adjust,
-        bias: false,
-        min_periods,
-        ignore_nulls: true,
+    let ignore_nulls = true;
+    let outlier_strategy = match inputs[4].str()?.get(0) {
+        None => OutlierOptions::None,
+        Some(o) => {
+            match o {
+                "none" => OutlierOptions::None,
+                "threshold" => {
+                    let threshold= inputs[5].f64()?.get(0).unwrap();
+                    OutlierOptions::Threshold { threshold }
+                },
+                "winsor" => {
+                    let lower = inputs[5].f64()?.get(0).unwrap();
+                    let upper = inputs[6].f64()?.get(0).unwrap();
+                },
+                "trim" => {
+                    let lower = inputs[5].f64()?.get(0).unwrap();
+                    let upper = inputs[6].f64()?.get(0).unwrap();
+                },
+                &_ => todo!(),   
+            }
+        }
     };
 
-    // dbg!(&options);
-
-    ewm_mean(s, options)
+    let xs = s.f64().unwrap();
+    let result = impl_ewm_mean_f64(
+        xs,
+        alpha,
+        adjust,
+        min_periods,
+        ignore_nulls,
+        outlier_strategy,
+    );
+    Series::try_from((s.name(), Box::new(result) as ArrayRef))
 }
 
 #[polars_expr(output_type_func=same_output_type)]
