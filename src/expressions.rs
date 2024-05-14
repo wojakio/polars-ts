@@ -212,10 +212,12 @@ fn pl_ewm_custom(inputs: &[Series]) -> PolarsResult<Series> {
                 "winsor" => {
                     let lower = inputs[5].f64()?.get(0).unwrap();
                     let upper = inputs[6].f64()?.get(0).unwrap();
+                    OutlierOptions::Winsor { lower, upper }
                 },
                 "trim" => {
                     let lower = inputs[5].f64()?.get(0).unwrap();
                     let upper = inputs[6].f64()?.get(0).unwrap();
+                    OutlierOptions::Trim { lower, upper }
                 },
                 &_ => todo!(),   
             }
