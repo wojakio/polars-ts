@@ -183,7 +183,13 @@ class ParamSchema:
                     "supplied multiple params without any categories. suggestion: add categories to params."
                 )
         else:
-            join_type = "left"
+            all_common_cats = params_subset.lazy().select(common_cats)
+            unique_common_cats = all_common_cats.unique()
+            one_to_one_join = len(all_common_cats.collect()) == len(unique_common_cats.collect())
+            if one_to_one_join:
+                join_type = "left"
+            else:
+                join_type = "cross"
 
         df_with_params = df.join(
             params_subset, on=common_cats, how=join_type
