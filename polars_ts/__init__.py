@@ -18,6 +18,7 @@ from .resample import *
 from .calendar import *
 from .futures import *
 from .dummymkt import *
+from .report import *
 
 from .grouper import Grouper  # noqa
 from .expr import *

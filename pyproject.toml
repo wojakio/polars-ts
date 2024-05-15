@@ -6,14 +6,19 @@ dependencies = [
   'polars-xdt',
   'hvplot',
   'pyarrow',
-  'scipy'
-
+  'scipy',
+  'plotly',
+  'nbformat',
+  'ipython'
 ]
 
 [project.optional-dependencies]
 dev=[
   'hvplot',
-  'pyarrow'
+  'pyarrow',
+  'plotly',
+  'nbformat',
+  'ipython'
 ]
 
 [build-system]
