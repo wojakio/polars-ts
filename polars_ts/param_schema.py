@@ -185,7 +185,9 @@ class ParamSchema:
         else:
             all_common_cats = params_subset.lazy().select(common_cats)
             unique_common_cats = all_common_cats.unique()
-            one_to_one_join = len(all_common_cats.collect()) == len(unique_common_cats.collect())
+            one_to_one_join = len(all_common_cats.collect()) == len(
+                unique_common_cats.collect()
+            )
             if one_to_one_join:
                 join_type = "left"
             else:

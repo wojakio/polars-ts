@@ -31,7 +31,15 @@ def ewm_custom(
     return pl.plugins.register_plugin_function(
         plugin_path=Path(__file__).parent.parent,
         function_name="pl_ewm_custom",
-        args=[values_expr, alpha, min_periods, adjust, outlier_strategy, outlier_param_1, outlier_param_2],
+        args=[
+            values_expr,
+            alpha,
+            min_periods,
+            adjust,
+            outlier_strategy,
+            outlier_param_1,
+            outlier_param_2,
+        ],
         is_elementwise=False,
     )
 

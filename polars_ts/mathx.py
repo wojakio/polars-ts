@@ -76,7 +76,7 @@ class MathxFrame(SeriesFrame, Generic[FrameType]):
         alpha: float = 0.5,
         min_periods: int = 0,
         adjust: bool = False,
-        outlier_strategy: str = None,
+        outlier_strategy: str = "none",
         outlier_param_1: float = 0.0,
         outlier_param_2: float = 100.0,
         null_strategy: str = "ignore",

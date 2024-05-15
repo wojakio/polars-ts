@@ -1,9 +1,8 @@
 use polars_arrow::array::PrimitiveArray;
+use polars_arrow::legacy::kernels::ewm::ewm_mean as ewm_mean_polars;
 use polars_arrow::legacy::utils::CustomIterTools;
 use polars_arrow::trusted_len::TrustedLen;
 use polars_arrow::types::NativeType;
-use polars_arrow::legacy::kernels::ewm::ewm_mean as ewm_mean_polars;
-
 
 use num_traits::{float::FloatCore, Float};
 use std::ops::{AddAssign, MulAssign};
@@ -57,9 +56,7 @@ where
     I::IntoIter: TrustedLen,
 {
     match outlier_strategy {
-        OutlierOptions::None => {
-            ewm_mean_polars(xs, alpha, adjust, min_periods, ignore_nulls)
-        }
+        OutlierOptions::None => ewm_mean_polars(xs, alpha, adjust, min_periods, ignore_nulls),
         OutlierOptions::Threshold { threshold } => {
             ewm_mean_threshold(xs, alpha, adjust, min_periods, ignore_nulls, threshold)
         }
@@ -97,7 +94,8 @@ where
 
                 let weight = 1.0 / (1.0 - new_wt * old_wt_factor);
                 let lambda_term = previous_weighted_average * old_wt_factor * (1.0 - new_wt);
-                let clipped_value = (x.min(threshold * previous_weighted_average)) * (1.0 - old_wt_factor);
+                let clipped_value =
+                    (x.min(threshold * previous_weighted_average)) * (1.0 - old_wt_factor);
 
                 previous_ewma = Some(weight * (lambda_term + clipped_value));
             } else {

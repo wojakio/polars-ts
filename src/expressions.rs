@@ -202,26 +202,24 @@ fn pl_ewm_custom(inputs: &[Series]) -> PolarsResult<Series> {
     let ignore_nulls = true;
     let outlier_strategy = match inputs[4].str()?.get(0) {
         None => OutlierOptions::None,
-        Some(o) => {
-            match o {
-                "none" => OutlierOptions::None,
-                "threshold" => {
-                    let threshold= inputs[5].f64()?.get(0).unwrap();
-                    OutlierOptions::Threshold { threshold }
-                },
-                "winsor" => {
-                    let lower = inputs[5].f64()?.get(0).unwrap();
-                    let upper = inputs[6].f64()?.get(0).unwrap();
-                    OutlierOptions::Winsor { lower, upper }
-                },
-                "trim" => {
-                    let lower = inputs[5].f64()?.get(0).unwrap();
-                    let upper = inputs[6].f64()?.get(0).unwrap();
-                    OutlierOptions::Trim { lower, upper }
-                },
-                &_ => todo!(),   
+        Some(o) => match o {
+            "none" => OutlierOptions::None,
+            "threshold" => {
+                let threshold = inputs[5].f64()?.get(0).unwrap();
+                OutlierOptions::Threshold { threshold }
             }
-        }
+            "winsor" => {
+                let lower = inputs[5].f64()?.get(0).unwrap();
+                let upper = inputs[6].f64()?.get(0).unwrap();
+                OutlierOptions::Winsor { lower, upper }
+            }
+            "trim" => {
+                let lower = inputs[5].f64()?.get(0).unwrap();
+                let upper = inputs[6].f64()?.get(0).unwrap();
+                OutlierOptions::Trim { lower, upper }
+            }
+            &_ => todo!(),
+        },
     };
 
     let xs = s.f64().unwrap();
