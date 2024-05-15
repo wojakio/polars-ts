@@ -1,5 +1,11 @@
-import polars as pl
+from typing import Callable
 
+import numpy as np
+import numpy.typing as npt
+import polars as pl
+from scipy.interpolate import CubicSpline
+
+from ..sf_helper import RESERVED_COL_REGEX
 from ..sf_helper import impl_handle_null
 from ..grouper import Grouper
 
@@ -9,6 +15,52 @@ from ..types import (
     FrameType,
     SentinelNumeric,
 )
+
+
+def impl_fit_spline(df: FrameType, interpolation: str, output_name: str) -> FrameType:
+    fn_data = (
+        df.lazy()
+        .collect()
+        .select(pl.exclude(RESERVED_COL_REGEX).cast(pl.Float64, strict=False))
+        .melt(id_vars="x", variable_name="name", value_name="y")
+        .with_columns(pl.col("name").cast(pl.Categorical))
+    )
+
+    fns = {
+        "cubic_clamped": (CubicSpline, {"bc_type": "clamped"}),
+        "cubic_natural": (CubicSpline, {"bc_type": "natural"}),
+    }
+
+    def _fitted_fn(fargs: pl.Series) -> Callable[..., npt.ArrayLike]:
+        xs = fargs.struct.field("x")
+        ys = fargs.struct.field("y")
+
+        fn, fn_args = fns[interpolation]
+        raw_fn: Callable[[npt.ArrayLike], npt.ArrayLike] = fn(xs, ys, **fn_args)
+
+        def clipped_fn(x: npt.ArrayLike) -> npt.ArrayLike:
+            a_min: npt.ArrayLike = xs.min()  # type: ignore[assignment]
+            a_max: npt.ArrayLike = xs.max()  # type: ignore[assignment]
+            clipped_x: npt.ArrayLike = np.clip(x, a_min, a_max)
+            return raw_fn(clipped_x)
+
+        return clipped_fn
+
+    result = (
+        fn_data.group_by("name")
+        .agg(fn=pl.struct("x", "y").map_batches(_fitted_fn))
+        .explode("fn")
+        .rename(
+            {
+                "name": f"{output_name}",
+                "fn": f"{output_name}_fn",
+            }
+        )
+        .lazy()
+    )
+
+    typed_result = result if isinstance(df, pl.LazyFrame) else result.collect()
+    return typed_result
 
 
 def impl_align_to_time(

@@ -1,11 +1,6 @@
 use polars_arrow::array::PrimitiveArray;
 use polars_arrow::legacy::kernels::ewm::ewm_mean as ewm_mean_polars;
-use polars_arrow::legacy::utils::CustomIterTools;
 use polars_arrow::trusted_len::TrustedLen;
-use polars_arrow::types::NativeType;
-
-use num_traits::{float::FloatCore, Float};
-use std::ops::{AddAssign, MulAssign};
 
 use std::hash::{Hash, Hasher};
 
@@ -60,10 +55,16 @@ where
         OutlierOptions::Threshold { threshold } => {
             ewm_mean_threshold(xs, alpha, adjust, min_periods, ignore_nulls, threshold)
         }
-        OutlierOptions::Trim { lower, upper } => {
+        OutlierOptions::Trim {
+            lower: _lower,
+            upper: _upper,
+        } => {
             panic!("Not implemented: ewm_mean(trim)")
         }
-        OutlierOptions::Winsor { lower, upper } => {
+        OutlierOptions::Winsor {
+            lower: _lower,
+            upper: _upper,
+        } => {
             panic!("Not implemented: ewm_mean(winsor)")
         }
     }
@@ -72,7 +73,7 @@ where
 fn ewm_mean_threshold<I>(
     xs: I,
     alpha: f64,
-    adjust: bool,
+    _adjust: bool,
     min_periods: usize,
     _ignore_nulls: bool,
     threshold: f64,

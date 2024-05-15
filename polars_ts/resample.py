@@ -8,18 +8,19 @@ from .resample_helper import (
     impl_align_to_time,
     impl_align_values,
     impl_resample_categories,
+    impl_fit_spline,
 )
 
 from .grouper import Grouper
-from .tsf import TimeSeriesFrame
+from .tsf import SeriesFrame
 from .types import IntervalType, FrameType, SentinelNumeric
 
 __NAMESPACE = "rs"
 
 
 @pl.api.register_lazyframe_namespace(__NAMESPACE)
-class ResampleFrame(TimeSeriesFrame, Generic[FrameType]):
-    def __init__(self, df: FrameType):
+class ResampleFrame(SeriesFrame, Generic[FrameType]):
+    def __init__(self, df: FrameType) -> None:
         super().__init__(df)
 
     def to_ohlc(
@@ -42,6 +43,14 @@ class ResampleFrame(TimeSeriesFrame, Generic[FrameType]):
             )
         )
 
+        return prepare_result(df)
+
+    def fit_spline(
+        self,
+        interpolation: Literal["cubic_clamped", "cubic_natural"],
+        output_name: str,
+    ) -> FrameType:
+        df = impl_fit_spline(self._df, interpolation, output_name)
         return prepare_result(df)
 
     def align_to_time(

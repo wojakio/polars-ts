@@ -907,10 +907,9 @@ dependencies = [
 
 [[package]]
 name = "polars-ts"
-version = "0.0.15"
+version = "0.0.16"
 dependencies = [
  "jemallocator",
- "num-traits",
  "polars",
  "polars-arrow",
  "polars-core",

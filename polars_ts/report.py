@@ -1,4 +1,4 @@
-from typing import Generic
+from typing import Generic, Optional
 import polars as pl
 
 import plotly.graph_objects as go
@@ -14,7 +14,7 @@ class ReportFrame(SeriesFrame, Generic[FrameType]):
     def __init__(self, df: FrameType) -> None:
         super().__init__(df)
 
-    def plot(self, title: str = None) -> go.Figure:
+    def plot(self, title: Optional[str] = None) -> go.Figure:
         fig = go.Figure()
 
         df = self._df.lazy().collect()
